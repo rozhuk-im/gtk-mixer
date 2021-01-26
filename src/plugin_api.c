@@ -140,8 +140,10 @@ gmp_list_devs(gm_plugin_p plugins, const size_t plugins_count,
 	for (size_t i = 0; i < plugins_count; i ++) {
 		plugin = &plugins[i];
 		error = plugin->descr->list_devs(plugin, dev_list);
-		if (0 != error)
+		if (0 != error) {
+			gmp_dev_list_clear(dev_list);
 			return (error);
+		}
 	}
 
 	return (0);
