@@ -44,11 +44,6 @@
 #include "plugin_api.h"
 
 
-typedef struct alsa_device_context_s {
-	int dev_index;
-} alsa_dev_ctx_t, *alsa_dev_ctx_p;
-
-
 static int
 alsa_list_devs(gm_plugin_p plugin, gmp_dev_list_p dev_list) {
 	int error, dev_index = -1;
@@ -86,13 +81,10 @@ alsa_list_devs(gm_plugin_p plugin, gmp_dev_list_p dev_list) {
 
 static int
 alsa_dev_init(gmp_dev_p dev) {
-	alsa_dev_ctx_p dev_ctx;
 	//gmp_dev_line_p dev_line;
 
 	if (NULL == dev)
 		return (EINVAL);
-
-	dev_ctx = dev->priv;
 
 	return (0);
 }
@@ -112,12 +104,9 @@ static int
 alsa_dev_line_read(gmp_dev_p dev, gmp_dev_line_p dev_line,
     gmp_dev_line_state_p line_state) {
 	int error = 0;
-	alsa_dev_ctx_p dev_ctx;
 
 	if (NULL == dev || NULL == dev_line || NULL == line_state)
 		return (EINVAL);
-
-	dev_ctx = dev->priv;
 
 	return (error);
 }
@@ -126,12 +115,9 @@ static int
 alsa_dev_line_write(gmp_dev_p dev, gmp_dev_line_p dev_line,
     gmp_dev_line_state_p line_state) {
 	int error = 0;
-	alsa_dev_ctx_p dev_ctx;
 
 	if (NULL == dev || NULL == dev_line || NULL == line_state)
 		return (EINVAL);
-
-	dev_ctx = dev->priv;
 
 	return (error);
 }
