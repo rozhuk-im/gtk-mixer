@@ -144,7 +144,7 @@ oss_is_def_dev_changed(gm_plugin_p plugin) {
 
 	oss_ctx = plugin->priv;
 	new_dev = oss_default_dev_get();
-	ret = (oss_ctx->def_dev_index == new_dev);
+	ret = (oss_ctx->def_dev_index != new_dev);
 	oss_ctx->def_dev_index = new_dev;
 
 	return (ret);
