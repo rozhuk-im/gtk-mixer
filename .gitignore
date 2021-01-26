@@ -120,3 +120,12 @@ build.ninja
 
 ### Ninja ###
 .ninja_log
+
+#Dirs
+.codelite/
+build/
+Makefile
+compile_flags.txt
+gtk-mixer.mk
+gtk-mixer.txt
+tags
