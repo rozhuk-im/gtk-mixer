@@ -107,9 +107,8 @@ gmp_uninit(gm_plugin_p plugins, const size_t plugins_count) {
 }
 
 
-size_t
+int
 gmp_is_def_dev_changed(gm_plugin_p plugins, const size_t plugins_count) {
-	size_t ret = 0;
 	gm_plugin_p plugin;
 
 	if (NULL == plugins || 0 == plugins_count)
@@ -119,10 +118,11 @@ gmp_is_def_dev_changed(gm_plugin_p plugins, const size_t plugins_count) {
 		plugin = &plugins[i];
 		if (NULL == plugin->descr->is_def_dev_changed)
 			continue;
-		ret += (size_t)plugin->descr->is_def_dev_changed(plugin);
+		if (0 != plugin->descr->is_def_dev_changed(plugin))
+			return (1);
 	}
 
-	return (ret);
+	return (0);
 }
 
 

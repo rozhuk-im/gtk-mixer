@@ -252,8 +252,7 @@ typedef struct gtk_mixer_plugin_device_list_s {
 int gmp_init(gm_plugin_p *plugins, size_t *plugins_count);
 void gmp_uninit(gm_plugin_p plugins, const size_t plugins_count);
 
-size_t gmp_is_def_dev_changed(gm_plugin_p plugins,
-    const size_t plugins_count);
+int gmp_is_def_dev_changed(gm_plugin_p plugins, const size_t plugins_count);
 
 int gmp_list_devs(gm_plugin_p plugins, const size_t plugins_count,
     gmp_dev_list_p dev_list);
