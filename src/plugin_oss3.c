@@ -52,7 +52,8 @@
 #include "plugin_api.h"
 
 
-#define PATH_DEV_MIXER "/dev/mixer"
+#define PATH_DEV_MIXER	"/dev/mixer"
+#define MIXER_ALLOC_CNT	8
 
 static const char *oss_line_labels[] = SOUND_DEVICE_LABELS;
 
@@ -78,8 +79,17 @@ typedef struct oss_device_context_s {
 } oss_dev_ctx_t, *oss_dev_ctx_p;
 
 
+/* Mixer device state: to track device change: connect/disconnect. */
+typedef struct oss_mixer_device_state_s {
+	dev_t		st_dev; /* inode's device */
+	ino_t		st_ino; /* inode's number */
+	struct timespec	st_mtim; /* time of last data modification */
+} oss_dev_state_t, *oss_dev_state_p;
+
 typedef struct oss_context_s {
 	int def_dev_index;
+	oss_dev_state_p dev_state;
+	size_t dev_state_count;
 } oss_ctx_t, *oss_ctx_p;
 
 
@@ -98,10 +108,14 @@ oss_init(gm_plugin_p plugin) {
 
 static void
 oss_uninit(gm_plugin_p plugin) {
+	oss_ctx_p oss_ctx;
 
-	if (NULL == plugin)
+	if (NULL == plugin || NULL == plugin->priv)
 		return;
 
+	oss_ctx = plugin->priv;
+
+	free(oss_ctx->dev_state);
 	free(plugin->priv);
 	plugin->priv = NULL;
 }
@@ -192,7 +206,7 @@ oss_list_devs(gm_plugin_p plugin, gmp_dev_list_p dev_list) {
 		return (EINVAL);
 
 	/* Auto detect. */
-	for (i = 0, fail_cnt = 0; fail_cnt < 8; i ++, fail_cnt ++) {
+	for (i = 0, fail_cnt = 0; fail_cnt < MIXER_ALLOC_CNT; i ++, fail_cnt ++) {
 		snprintf(dev_path, sizeof(dev_path),
 		    PATH_DEV_MIXER"%zu", i);
 		if (0 != stat(dev_path, &st))
@@ -221,18 +235,44 @@ oss_is_list_devs_changed(gm_plugin_p plugin) {
 	struct stat st;
 	char dev_path[32];
 	oss_ctx_p oss_ctx;
+	oss_dev_state_p dstate, dev_state_new;
 
 	if (NULL == plugin || NULL == plugin->priv)
 		return (0);
 
 	oss_ctx = plugin->priv;
 	/* Calculate count and latest mod time. */
-	for (i = 0, fail_cnt = 0; fail_cnt < 8; i ++, fail_cnt ++) {
+	for (i = 0, fail_cnt = 0; fail_cnt < MIXER_ALLOC_CNT; i ++, fail_cnt ++) {
+		if (oss_ctx->dev_state_count <= i) {
+			dev_state_new = reallocarray(oss_ctx->dev_state,
+			    (oss_ctx->dev_state_count + MIXER_ALLOC_CNT),
+			    sizeof(oss_dev_state_t));
+			if (NULL == dev_state_new)
+				return (1); /* Assume that devices has changes. */
+			/* Zeroize new mem. */
+			memset(&dev_state_new[oss_ctx->dev_state_count],
+			    0x00,
+			    (MIXER_ALLOC_CNT * sizeof(oss_dev_state_t)));
+			oss_ctx->dev_state = dev_state_new;
+			oss_ctx->dev_state_count += MIXER_ALLOC_CNT;
+		}
+		dstate = &oss_ctx->dev_state[i];
 		snprintf(dev_path, sizeof(dev_path),
 		    PATH_DEV_MIXER"%zu", i);
-		if (0 != stat(dev_path, &st))
-			continue;
-		fail_cnt = 0; /* Reset fail counter. */
+		memset(&st, 0x00, sizeof(st));
+		if (0 == stat(dev_path, &st)) {
+			fail_cnt = 0; /* Reset fail counter. */
+		}
+		if (dstate->st_dev == st.st_dev &&
+		    dstate->st_ino == st.st_ino &&
+		    dstate->st_mtim.tv_nsec == st.st_mtim.tv_nsec &&
+		    dstate->st_mtim.tv_sec == st.st_mtim.tv_sec)
+			continue; /* Not changed. */
+		/* Update. */
+		dstate->st_dev = st.st_dev;
+		dstate->st_ino = st.st_ino;
+		dstate->st_mtim = st.st_mtim;
+		ret ++;
 	}
 
 	return (ret);
