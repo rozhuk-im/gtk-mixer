@@ -72,11 +72,39 @@ static const uint32_t mixer_state_id[] = {
 	SOUND_MIXER_STEREODEVS, /* Mixer channels supporting stereo. */
 };
 
-
 typedef struct oss_device_context_s {
 	int state[nitems(mixer_state_id)];
 	int dev_index;
 } oss_dev_ctx_t, *oss_dev_ctx_p;
+
+
+typedef struct oss_context_s {
+	int def_dev_index;
+} oss_ctx_t, *oss_ctx_p;
+
+
+static int
+oss_init(gm_plugin_p plugin) {
+
+	if (NULL == plugin)
+		return (EINVAL);
+
+	plugin->priv = calloc(1, sizeof(oss_ctx_t));
+	if (NULL == plugin->priv)
+		return (ENOMEM);
+
+	return (0);
+}
+
+static void
+oss_uninit(gm_plugin_p plugin) {
+
+	if (NULL == plugin)
+		return;
+
+	free(plugin->priv);
+	plugin->priv = NULL;
+}
 
 
 #ifdef HAS_FEATURE_DEFAULT_DEV
@@ -109,12 +137,15 @@ oss_default_dev_set(int dev_idx) {
 static int
 oss_is_def_dev_changed(gm_plugin_p plugin) {
 	int ret, new_dev;
+	oss_ctx_p oss_ctx;
 
-	if (NULL == plugin)
+	if (NULL == plugin || NULL == plugin->priv)
 		return (0);
+
+	oss_ctx = plugin->priv;
 	new_dev = oss_default_dev_get();
-	ret = (((size_t)plugin->priv) == ((size_t)new_dev));
-	plugin->priv = (void*)(size_t)new_dev;
+	ret = (oss_ctx->def_dev_index == new_dev);
+	oss_ctx->def_dev_index = new_dev;
 
 	return (ret);
 }
@@ -142,7 +173,7 @@ device_descr_get(size_t dev_idx, char *buf, size_t buf_size) {
 	int fd = open(dev_path, O_RDONLY);
 	if (0 == ioctl(fd, SOUND_MIXER_INFO, &mi)) {
 		strncpy(buf, mi.name, buf_size);
-		tmp = buf_size;
+		tmp = (buf_size - 1);
 	}
 	close(fd);
 #endif
@@ -185,15 +216,17 @@ oss_list_devs(gm_plugin_p plugin, gmp_dev_list_p dev_list) {
 
 static int
 oss_is_list_devs_changed(gm_plugin_p plugin) {
-	int error;
+	int ret = 0;
 	size_t i, fail_cnt;
 	struct stat st;
 	char dev_path[32];
+	oss_ctx_p oss_ctx;
 
-	if (NULL == plugin)
+	if (NULL == plugin || NULL == plugin->priv)
 		return (0);
 
-	/* Calculate cound and latest mod time. */
+	oss_ctx = plugin->priv;
+	/* Calculate count and latest mod time. */
 	for (i = 0, fail_cnt = 0; fail_cnt < 8; i ++, fail_cnt ++) {
 		snprintf(dev_path, sizeof(dev_path),
 		    PATH_DEV_MIXER"%zu", i);
@@ -202,7 +235,7 @@ oss_is_list_devs_changed(gm_plugin_p plugin) {
 		fail_cnt = 0; /* Reset fail counter. */
 	}
 
-	return (0);
+	return (ret);
 }
 
 
@@ -420,6 +453,8 @@ const gmp_descr_t plugin_oss3 = {
 	.dev_is_default	= oss_dev_is_default,
 	.dev_set_default= oss_dev_set_default,
 #endif
+	.init		= oss_init,
+	.uninit		= oss_uninit,
 	.list_devs	= oss_list_devs,
 	.is_list_devs_changed= oss_is_list_devs_changed,
 	.dev_init	= oss_dev_init,
