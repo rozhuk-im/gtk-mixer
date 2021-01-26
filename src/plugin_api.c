@@ -214,6 +214,25 @@ gmp_dev_list_get_default(gmp_dev_list_p dev_list) {
 
 
 int
+gmp_is_list_devs_changed(gm_plugin_p plugins, const size_t plugins_count) {
+	gm_plugin_p plugin;
+
+	if (NULL == plugins || 0 == plugins_count)
+		return (0);
+
+	for (size_t i = 0; i < plugins_count; i ++) {
+		plugin = &plugins[i];
+		if (NULL == plugin->descr->is_list_devs_changed)
+			continue;
+		if (0 != plugin->descr->is_list_devs_changed(plugin))
+			return (1);
+	}
+
+	return (0);
+}
+
+
+int
 gmp_dev_init(gmp_dev_p dev) {
 	int error;
 

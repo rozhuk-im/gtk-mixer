@@ -263,6 +263,8 @@ int gmp_dev_list_add(gm_plugin_p plugin, gmp_dev_list_p dev_list,
     gmp_dev_p dev);
 gmp_dev_p gmp_dev_list_get_default(gmp_dev_list_p dev_list);
 
+int gmp_is_list_devs_changed(gm_plugin_p plugins, const size_t plugins_count);
+
 int gmp_dev_init(gmp_dev_p dev);
 void gmp_dev_uninit(gmp_dev_p dev);
 
