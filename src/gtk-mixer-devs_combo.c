@@ -124,12 +124,14 @@ gtk_mixer_devs_combo_set_active_device(GtkWidget *combo,
 	while (valid_iter) {
 		gtk_tree_model_get(GTK_TREE_MODEL(list_store),
 		    &iter, GM_CMB_DEVS_COLUMN_CARD, &device_cur, -1);
-		if (device_cur == dev)
+		if (device_cur == dev) {
+			gtk_combo_box_set_active_iter(GTK_COMBO_BOX(combo),
+			    &iter);
 			break;
+		}
 		valid_iter = gtk_tree_model_iter_next(
 		    GTK_TREE_MODEL(list_store), &iter);
 	}
-	gtk_combo_box_set_active_iter(GTK_COMBO_BOX(combo), &iter);
 }
 
 void
