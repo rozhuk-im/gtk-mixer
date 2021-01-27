@@ -116,6 +116,10 @@ gmp_is_def_dev_changed(gm_plugin_p plugins, const size_t plugins_count) {
 
 	for (size_t i = 0; i < plugins_count; i ++) {
 		plugin = &plugins[i];
+		/* TODO: if sound backend does not support
+		 * is_def_dev_changed() but support dev_is_default()
+		 * then we must call list_devs() and compare resuls with
+		 * cached devices list to detect changes. */
 		if (NULL == plugin->descr->is_def_dev_changed)
 			continue;
 		if (0 != plugin->descr->is_def_dev_changed(plugin))
@@ -224,6 +228,10 @@ gmp_is_list_devs_changed(gm_plugin_p plugins, const size_t plugins_count) {
 
 	for (size_t i = 0; i < plugins_count; i ++) {
 		plugin = &plugins[i];
+		/* TODO: if sound backend does not support
+		 * is_list_devs_changed() then we must call
+		 * list_devs() and compare resuls with
+		 * cached devices list to detect changes. */
 		if (NULL == plugin->descr->is_list_devs_changed)
 			continue;
 		if (0 != plugin->descr->is_list_devs_changed(plugin))
