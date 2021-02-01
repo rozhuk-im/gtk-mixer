@@ -50,7 +50,7 @@ gtk_mixer_window_soundcard_changed(GtkWidget *combo __unused,
 	gmp_dev_p dev;
 
 	/* Update mixer controls for the active sound card */
-	dev = gtk_mixer_devs_combo_get_dev(gm_win->soundcard_combo);
+	dev = gtk_mixer_devs_combo_cur_get(gm_win->soundcard_combo);
 	if (NULL != dev) {
 		snprintf(title, sizeof(title),
 		    "%s - %s", _("Audio Mixer"),
@@ -72,11 +72,11 @@ gtk_mixer_makedef_button(GtkButton *button __unused, gpointer user_data) {
 	gm_window_p gm_win = user_data;
 	gmp_dev_p dev;
 
-	dev = gtk_mixer_devs_combo_get_dev(gm_win->soundcard_combo);
+	dev = gtk_mixer_devs_combo_cur_get(gm_win->soundcard_combo);
 	if (NULL == dev)
 		return;
 	gmp_dev_set_default(dev);
-	gtk_mixer_devs_combo_update(gm_win->soundcard_combo, NULL);
+	gtk_mixer_devs_combo_update(gm_win->soundcard_combo);
 }
 
 static void
@@ -91,10 +91,9 @@ gtk_mixer_window_destroy(GtkWidget *window __unused, gpointer user_data) {
 }
 
 GtkWidget *
-gtk_mixer_window_create(gmp_dev_list_p dev_list) {
+gtk_mixer_window_create(void) {
 	gm_window_p gm_win;
 	GtkWidget *label, *vbox, *hbox, *mixer_frame;
-	gmp_dev_p dev = NULL;
 
 	gm_win = calloc(1, sizeof(gm_window_t));
 	if (NULL == gm_win)
@@ -110,16 +109,6 @@ gtk_mixer_window_create(gmp_dev_list_p dev_list) {
 #if 0
 	g_object_get(gm_win->preferences, "window-width",
 	    &gm_win->width, "window-height", &gm_win->height,
-	    "sound-card", &card_name, NULL);
-
-	if (card_name != NULL) {
-		dev = gtk_mixer_get_card(card_name);
-	} else {
-		dev = gtk_mixer_get_default_card();
-		g_object_set(gm_win->preferences, "sound-card",
-		    gtk_mixer_get_card_internal_name(dev), NULL);
-	}
-	g_free(card_name);
 #endif
 
 	/* Configure the main window. */
@@ -146,8 +135,7 @@ gtk_mixer_window_create(gmp_dev_list_p dev_list) {
 	gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, FALSE, 0);
 	gtk_widget_show(label);
 
-	gm_win->soundcard_combo = gtk_mixer_devs_combo_create(dev_list,
-	    dev);
+	gm_win->soundcard_combo = gtk_mixer_devs_combo_create();
 	g_signal_connect(gm_win->soundcard_combo, "changed",
 	    G_CALLBACK(gtk_mixer_window_soundcard_changed), gm_win);
 	gtk_box_pack_start(
@@ -199,17 +187,27 @@ gtk_mixer_window_connect_dev_changed(GtkWidget *window,
 }
 
 gmp_dev_p
-gtk_mixer_window_get_dev(GtkWidget *window) {
+gtk_mixer_window_dev_cur_get(GtkWidget *window) {
 	gm_window_p gm_win = g_object_get_data(G_OBJECT(window),
 	    "__gtk_mixer_window");
 
 	if (NULL == gm_win)
 		return (0);
-	return (gtk_mixer_devs_combo_get_dev(gm_win->soundcard_combo));
+	return (gtk_mixer_devs_combo_cur_get(gm_win->soundcard_combo));
 }
 
 void
-gtk_mixer_window_update_dev_list(GtkWidget *window) {
+gtk_mixer_window_dev_cur_set(GtkWidget *window, gmp_dev_p dev) {
+	gm_window_p gm_win = g_object_get_data(G_OBJECT(window),
+	    "__gtk_mixer_window");
+
+	if (NULL == gm_win)
+		return;
+	gtk_mixer_devs_combo_cur_set(gm_win->soundcard_combo, dev);
+}
+
+void
+gtk_mixer_window_dev_list_update(GtkWidget *window, gmp_dev_list_p dev_list) {
 	gmp_dev_p dev;
 	gm_window_p gm_win = g_object_get_data(G_OBJECT(window),
 	    "__gtk_mixer_window");
@@ -218,16 +216,21 @@ gtk_mixer_window_update_dev_list(GtkWidget *window) {
 		return;
 
 	/* Update dev list only if it can be changed. */
-	dev = gtk_mixer_devs_combo_get_dev(gm_win->soundcard_combo);
-	if (dev->plugin->descr->can_set_default_device) {
-		gtk_mixer_devs_combo_update(gm_win->soundcard_combo, NULL);
+	dev = gtk_mixer_devs_combo_cur_get(gm_win->soundcard_combo);
+	if (NULL != dev_list) {
+		gtk_mixer_devs_combo_dev_list_set(gm_win->soundcard_combo,
+		    dev_list);
+	}
+	if (NULL != dev &&
+	    dev->plugin->descr->can_set_default_device) {
+		gtk_mixer_devs_combo_update(gm_win->soundcard_combo);
 		gtk_widget_set_sensitive(gm_win->makedef_button,
 		    (0 == gmp_dev_is_default(dev)));
 	}
 }
 
 void
-gtk_mixer_window_update_lines(GtkWidget *window) {
+gtk_mixer_window_lines_update(GtkWidget *window) {
 	gm_window_p gm_win = g_object_get_data(G_OBJECT(window),
 	    "__gtk_mixer_window");
 

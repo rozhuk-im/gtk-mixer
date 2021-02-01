@@ -16,10 +16,12 @@ GPL2 licence.\
 
 
 ## Features
-* plugins to support different sound backens
+* plugins for support different sound backens
 * change system default sound card
 * set volume per line/channel
 * enable/disable lines (mute/unmute)
+* detect sound cards connect/disconnect
+* detect default sound card change
 
 
 ## Compilation

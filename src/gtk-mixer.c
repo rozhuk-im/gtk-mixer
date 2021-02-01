@@ -52,6 +52,8 @@ typedef struct gtk_mixer_app_s {
 	size_t update_force_counter;
 } gm_app_t, *gm_app_p;
 
+/* Check updates every 1s if no changes and every 100ms if something was
+ * changes in last 5 second. */
 #define UPDATE_INTERVAL		100
 /* If no chenges - check every (UPDATE_INTERVAL * UPDATE_SKIP_MAX_COUNT) ms. */
 #define UPDATE_SKIP_MAX_COUNT	10
@@ -63,31 +65,50 @@ static gboolean
 gtk_mixer_check_update(gm_app_p app) {
 	int error;
 	size_t changes = 0;
+	gmp_dev_list_t dev_list;
+	gmp_dev_p dev = NULL;
 
-	if (NULL == app->dev)
-		return (TRUE); /* No device. */
 	/* GUI update rate scaler. */
 	app->update_skip_counter ++;
 	if (UPDATE_SKIP_MAX_COUNT > app->update_skip_counter)
 		return (TRUE);
 	app->update_skip_counter = 0;
 
-	/* Default device change handle. */
-	if (0 != gmp_is_def_dev_changed(app->plugins,
-	    app->plugins_count)) {
+	/* Devices list update check. */
+	if (gmp_is_list_devs_changed(app->plugins, app->plugins_count)) {
 		changes ++;
-		gtk_mixer_window_update_dev_list(app->window);
+		memset(&dev_list, 0x00, sizeof(dev_list));
+		error = gmp_list_devs(app->plugins, app->plugins_count,
+		    &dev_list);
+		if (0 == error) {
+			/* Try to find old current dev in updated dev list. */
+			dev = gmp_dev_find_same(&dev_list, app->dev);
+			gtk_mixer_window_dev_list_update(app->window,
+			    &dev_list);
+			gmp_dev_list_clear(&app->dev_list);
+			app->dev_list = dev_list;
+			/* Select new current device. */
+			if (NULL == dev) {
+				dev = gmp_dev_list_get_default(&app->dev_list);
+			}
+			gtk_mixer_window_dev_cur_set(app->window, dev);
+		}
+	} else if (0 != gmp_is_def_dev_changed(app->plugins,
+	    app->plugins_count)) { /* Default device changed. */
+		changes ++;
+		gtk_mixer_window_dev_list_update(app->window, NULL);
 	}
 
 	/* Check lines update for current device. */
-	error = gmp_dev_read(app->dev, 1);
-	if (0 != error)
-		return (TRUE);
-	if (gmp_dev_is_updated(app->dev)) {
-		/* GUI update. */
-		gtk_mixer_window_update_lines(app->window);
-		gtk_mixer_tray_icon_update(app->status_icon);
-		changes += gmp_dev_is_updated_clear(app->dev);
+	if (NULL != app->dev) {
+		error = gmp_dev_read(app->dev, 1);
+		if (0 == error && 
+		    gmp_dev_is_updated(app->dev)) {
+			/* GUI update. */
+			gtk_mixer_window_lines_update(app->window);
+			gtk_mixer_tray_icon_update(app->status_icon);
+			changes += gmp_dev_is_updated_clear(app->dev);
+		}
 	}
 
 	/* GUI update rate scaler. */
@@ -111,7 +132,7 @@ gtk_mixer_soundcard_changed(GtkWidget *combo __unused,
 	if (NULL == app)
 		return;
 
-	app->dev = gtk_mixer_window_get_dev(app->window);
+	app->dev = gtk_mixer_window_dev_cur_get(app->window);
 
 	/* Tray icon.*/
 	gtk_mixer_tray_icon_dev_set(app->status_icon, app->dev);
@@ -204,6 +225,7 @@ int
 main(int argc, char **argv) {
 	int error;
 	gm_app_t app;
+	gmp_dev_p dev = NULL;
 
 	memset(&app, 0x00, sizeof(gm_app_t));
 
@@ -224,7 +246,23 @@ main(int argc, char **argv) {
 	gtk_window_set_default_icon_name(APP_ICON_NAME);
 
 	/* Main window. */
-	app.window = gtk_mixer_window_create(&app.dev_list);
+	app.window = gtk_mixer_window_create();
+	gtk_mixer_window_dev_list_update(app.window, &app.dev_list);
+#if 0
+	if (card_name != NULL) {
+		dev = gtk_mixer_get_card(card_name);
+	} else {
+		dev = gtk_mixer_get_default_card();
+		g_object_set(gm_win->preferences, "sound-card",
+		    gtk_mixer_get_card_internal_name(dev), NULL);
+	}
+	g_free(card_name);
+#endif
+	if (NULL == dev) {
+		dev = gmp_dev_list_get_default(&app.dev_list);
+	}
+	gtk_mixer_window_dev_cur_set(app.window, dev);
+
 
 	/* Tray icon. */
 	app.status_icon = gtk_mixer_tray_icon_create();

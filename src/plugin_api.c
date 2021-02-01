@@ -42,6 +42,18 @@
 
 
 static inline int
+strcmp_safe(const char *s1, const char *s2) {
+	
+	if (s1 == s2)
+		return (0);
+	if (NULL == s1)
+		return (-127);
+	if (NULL == s2)
+		return (127);
+	return (strcmp(s1, s2));
+}
+
+static inline int
 volume_apply_limits(const int vol) {
 
 	if (0 > vol)
@@ -82,6 +94,13 @@ gmp_init(gm_plugin_p *plugins, size_t *plugins_count) {
 		if (NULL != plugin->descr->init) {
 			if (0 != plugin->descr->init(plugin))
 				continue;
+			/* Init change detect. */
+			if (NULL != plugin->descr->is_def_dev_changed) {
+				plugin->descr->is_def_dev_changed(plugin);
+			}
+			if (NULL != plugin->descr->is_list_devs_changed) {
+				plugin->descr->is_list_devs_changed(plugin);
+			}
 		}
 		j ++;
 	}
@@ -171,6 +190,26 @@ gmp_dev_list_clear(gmp_dev_list_p dev_list) {
 	}
 	dev_list->count = 0;
 	free(dev_list->devs);
+}
+
+gmp_dev_p
+gmp_dev_find_same(gmp_dev_list_p dev_list, gmp_dev_p dev) {
+	gmp_dev_p cur_dev;
+
+	if (NULL == dev_list)
+		return (NULL);
+
+	for (size_t i = 0; i < dev_list->count; i ++) {
+		cur_dev = &dev_list->devs[i];
+		if (dev->plugin != cur_dev->plugin)
+			continue;
+		if (0 != strcmp_safe(dev->name, cur_dev->name) ||
+		    0 != strcmp_safe(dev->description, cur_dev->description))
+			continue;
+		return (cur_dev);
+	}
+
+	return (NULL);
 }
 
 int

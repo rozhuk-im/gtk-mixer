@@ -61,7 +61,7 @@ gtk_mixer_devs_combo_destroy(GtkWidget *combo __unused, gpointer user_data) {
 }
 
 GtkWidget *
-gtk_mixer_devs_combo_create(gmp_dev_list_p dev_list, gmp_dev_p dev) {
+gtk_mixer_devs_combo_create(void) {
 	GtkWidget *combo;
 	GtkListStore *list_store;
 	GtkCellRenderer *renderer;
@@ -87,18 +87,11 @@ gtk_mixer_devs_combo_create(gmp_dev_list_p dev_list, gmp_dev_p dev) {
 	gtk_cell_layout_add_attribute(GTK_CELL_LAYOUT(combo), renderer,
 	    "text", GM_CMB_DEVS_COLUMN_NAME);
 
-	gtk_mixer_devs_combo_update(combo, dev_list);
-
-	if (NULL == dev) {
-		dev = gmp_dev_list_get_default(dev_list);
-	}
-	gtk_mixer_devs_combo_set_active_device(combo, dev);
-
 	return (combo);
 }
 
 gmp_dev_p
-gtk_mixer_devs_combo_get_dev(GtkWidget *combo) {
+gtk_mixer_devs_combo_cur_get(GtkWidget *combo) {
 
 	if (NULL == combo)
 		return (NULL);
@@ -107,7 +100,7 @@ gtk_mixer_devs_combo_get_dev(GtkWidget *combo) {
 }
 
 void
-gtk_mixer_devs_combo_set_active_device(GtkWidget *combo,
+gtk_mixer_devs_combo_cur_set(GtkWidget *combo,
     gmp_dev_p dev) {
 	gmp_dev_p device_cur = NULL;
 	GtkTreeIter iter;
@@ -134,9 +127,50 @@ gtk_mixer_devs_combo_set_active_device(GtkWidget *combo,
 	}
 }
 
+static inline void
+gtk_mixer_devs_combo_dev_descr(gmp_dev_p dev, char *buf, size_t buf_size) {
+
+	if (NULL == buf || 0 == buf_size)
+		return;
+	if (NULL == dev) {
+		buf[0] = 0x00;
+		return;
+	}
+	snprintf(buf, buf_size,
+	    "%s: %s (%s)%s",
+	    dev->plugin->descr->name,
+	    dev->description,
+	    dev->name,
+	    ((gmp_dev_is_default(dev)) ? " [default]" : ""));
+}
+
 void
-gtk_mixer_devs_combo_update(GtkWidget *combo, gmp_dev_list_p dev_list) {
-	gmp_dev_p device_cur = NULL;
+gtk_mixer_devs_combo_dev_list_set(GtkWidget *combo, gmp_dev_list_p dev_list) {
+	gmp_dev_p dev = NULL;
+	GtkTreeIter iter;
+	GtkListStore *list_store = g_object_get_data(G_OBJECT(combo),
+	    "__gtk_mixer_devs_combo_list_store");
+	char display_name[256];
+
+	if (NULL == list_store)
+		return;
+
+	gtk_list_store_clear(list_store);
+	if (NULL == dev_list)
+		return;
+	for (size_t i = 0; i < dev_list->count; i ++) {
+		gtk_list_store_append(list_store, &iter);
+		dev = &dev_list->devs[i];
+		gtk_mixer_devs_combo_dev_descr(dev,
+		    display_name, sizeof(display_name));
+		gtk_list_store_set(list_store, &iter,
+		    GM_CMB_DEVS_COLUMN_CARD, dev,
+		    GM_CMB_DEVS_COLUMN_NAME, display_name, -1);
+	}
+}
+void
+gtk_mixer_devs_combo_update(GtkWidget *combo) {
+	gmp_dev_p dev = NULL;
 	GtkTreeIter iter;
 	gboolean valid_iter;
 	GtkListStore *list_store = g_object_get_data(G_OBJECT(combo),
@@ -146,25 +180,13 @@ gtk_mixer_devs_combo_update(GtkWidget *combo, gmp_dev_list_p dev_list) {
 	if (NULL == list_store)
 		return;
 
-	if (NULL != dev_list) {
-		for (size_t i = 0; i < dev_list->count; i ++) {
-			gtk_list_store_append(list_store, &iter);
-			gtk_list_store_set(list_store, &iter,
-			    GM_CMB_DEVS_COLUMN_CARD, &dev_list->devs[i], -1);
-		}
-	}
-
 	valid_iter = gtk_tree_model_get_iter_first(
 	    GTK_TREE_MODEL(list_store), &iter);
 	while (valid_iter) {
 		gtk_tree_model_get(GTK_TREE_MODEL(list_store),
-		    &iter, GM_CMB_DEVS_COLUMN_CARD, &device_cur, -1);
-		snprintf(display_name, sizeof(display_name),
-		    "%s: %s (%s)%s",
-		    device_cur->plugin->descr->name,
-		    device_cur->description,
-		    device_cur->name,
-		    ((gmp_dev_is_default(device_cur)) ? " [default]" : ""));
+		    &iter, GM_CMB_DEVS_COLUMN_CARD, &dev, -1);
+		gtk_mixer_devs_combo_dev_descr(dev,
+		    display_name, sizeof(display_name));
 		gtk_list_store_set(list_store, &iter,
 		    GM_CMB_DEVS_COLUMN_NAME, display_name, -1);
 		valid_iter = gtk_tree_model_iter_next(

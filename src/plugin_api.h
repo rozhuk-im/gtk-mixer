@@ -258,6 +258,7 @@ int gmp_list_devs(gm_plugin_p plugins, const size_t plugins_count,
     gmp_dev_list_p dev_list);
 /* Does not free dev_list, work only with stored data. */
 void gmp_dev_list_clear(gmp_dev_list_p dev_list);
+gmp_dev_p gmp_dev_find_same(gmp_dev_list_p dev_list, gmp_dev_p dev);
 int gmp_dev_list_add(gm_plugin_p plugin, gmp_dev_list_p dev_list,
     gmp_dev_p dev);
 gmp_dev_p gmp_dev_list_get_default(gmp_dev_list_p dev_list);

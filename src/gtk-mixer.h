@@ -63,19 +63,19 @@
 const char *volume_stock_from_level(const int is_mic, const int is_enabled,
     const int level, const char *cur_icon_name);
 
-GtkWidget *gtk_mixer_window_create(gmp_dev_list_p dev_list);
+GtkWidget *gtk_mixer_window_create(void);
 gulong gtk_mixer_window_connect_dev_changed(GtkWidget *window,
     GCallback c_handler, gpointer data);
-gmp_dev_p gtk_mixer_window_get_dev(GtkWidget *window);
-void gtk_mixer_window_update_dev_list(GtkWidget *window);
-void gtk_mixer_window_update_lines(GtkWidget *window);
+gmp_dev_p gtk_mixer_window_dev_cur_get(GtkWidget *window);
+void gtk_mixer_window_dev_cur_set(GtkWidget *window, gmp_dev_p dev);
+void gtk_mixer_window_dev_list_update(GtkWidget *window, gmp_dev_list_p dev_list);
+void gtk_mixer_window_lines_update(GtkWidget *window);
 
-GtkWidget *gtk_mixer_devs_combo_create(gmp_dev_list_p dev_list,
-    gmp_dev_p dev);
-gmp_dev_p gtk_mixer_devs_combo_get_dev(GtkWidget *combo);
-void gtk_mixer_devs_combo_set_active_device(GtkWidget *combo,
-    gmp_dev_p dev);
-void gtk_mixer_devs_combo_update(GtkWidget *combo, gmp_dev_list_p dev_list);
+GtkWidget *gtk_mixer_devs_combo_create(void);
+gmp_dev_p gtk_mixer_devs_combo_cur_get(GtkWidget *combo);
+void gtk_mixer_devs_combo_cur_set(GtkWidget *combo, gmp_dev_p dev);
+void gtk_mixer_devs_combo_dev_list_set(GtkWidget *combo, gmp_dev_list_p dev_list);
+void gtk_mixer_devs_combo_update(GtkWidget *combo);
 
 GtkWidget *gtk_mixer_container_create(void);
 void gtk_mixer_container_dev_set(GtkWidget *container, gmp_dev_p dev);
