@@ -12,7 +12,7 @@ but xfce4 and gstreamer does not used.
 
 
 ## Licence
-GPL2 licence.\
+GPL2 licence.
 
 
 ## Features
