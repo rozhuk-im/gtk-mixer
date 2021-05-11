@@ -33,6 +33,7 @@
 #include <err.h>
 #include <errno.h>
 #include <inttypes.h>
+#include <getopt.h>
 
 #include "gtk-mixer.h"
 
@@ -225,10 +226,20 @@ gtk_mixer_status_icon_menu(GtkStatusIcon *status_icon __unused,
 int
 main(int argc, char **argv) {
 	int error;
+	int ch, opt_idx = -1, start_hidden = 0;
 	gm_app_t app;
 	gmp_dev_p dev = NULL;
+	struct option long_options[] = {
+		{ "start-hidden",	no_argument,	&start_hidden,	1 },
+		{ NULL,			0,		NULL,		0 }
+	};
 
 	memset(&app, 0x00, sizeof(gm_app_t));
+
+	while ((ch = getopt_long_only(argc, argv, "", long_options,
+	    &opt_idx)) != -1) {
+	}
+
 
 	error = gmp_init(&app.plugins, &app.plugins_count);
 	if (0 != error)
@@ -279,7 +290,11 @@ main(int argc, char **argv) {
 	gtk_mixer_soundcard_changed(NULL, &app);
 
 	/* Display the mixer window. */
-	gtk_window_present(GTK_WINDOW(app.window));
+	if (start_hidden) {
+		gtk_widget_hide(app.window);
+	} else {
+		gtk_window_present(GTK_WINDOW(app.window));
+	}
 
 	/* For update, if volume changed from other app. */
 	g_timeout_add(UPDATE_INTERVAL,
