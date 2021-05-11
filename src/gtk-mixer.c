@@ -152,7 +152,7 @@ gtk_mixer_status_icon_activate(GtkStatusIcon *status_icon __unused,
 		gtk_widget_hide(app->window);
 	} else {
 		gtk_widget_show(app->window);
-		gtk_window_deiconify(app->window);
+		gtk_window_deiconify(GTK_WINDOW(app->window));
 	}
 }
 
