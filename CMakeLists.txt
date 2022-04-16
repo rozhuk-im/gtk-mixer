@@ -135,7 +135,8 @@ if (ENABLE_OSS)
 endif()
 
 
-try_c_flag(PIPE "-pipe")
+try_c_flag(PIPE				"-pipe")
+try_c_flag(NO_DEL_NULL_PTR_CHKS		"-fno-delete-null-pointer-checks")
 
 # Process with warn flags.
 if (NOT CMAKE_C_OPT_FLAGS AND ENABLE_FULL_DEBUG)
