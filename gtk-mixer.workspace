@@ -2,11 +2,11 @@
 <CodeLite_Workspace Name="gtk-mixer" Database="" Version="10000">
   <Project Name="gtk-mixer" Path="gtk-mixer.project" Active="Yes"/>
   <BuildMatrix>
-    <WorkspaceConfiguration Name="Debug" Selected="yes">
+    <WorkspaceConfiguration Name="Debug">
       <Environment/>
       <Project Name="gtk-mixer" ConfigName="Debug"/>
     </WorkspaceConfiguration>
-    <WorkspaceConfiguration Name="Release" Selected="no">
+    <WorkspaceConfiguration Name="Release">
       <Environment/>
       <Project Name="gtk-mixer" ConfigName="Release"/>
     </WorkspaceConfiguration>

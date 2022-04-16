@@ -78,7 +78,6 @@
     </Configuration>
     <Configuration Name="Release" CompilerType="clang" DebuggerType="GNU gdb debugger" Type="Executable" BuildCmpWithGlobalSettings="append" BuildLnkWithGlobalSettings="append" BuildResWithGlobalSettings="append">
       <Compiler Options="-O2;-Wall" C_Options="-O2;-Wall" Assembler="" Required="yes" PreCompiledHeader="" PCHInCommandLine="no" PCHFlags="" PCHFlagsPolicy="0">
-        <IncludePath Value="."/>
         <Preprocessor Value="NDEBUG"/>
       </Compiler>
       <Linker Options="" Required="yes"/>
@@ -98,16 +97,16 @@
       <CustomBuild Enabled="yes">
         <RebuildCommand/>
         <CleanCommand>rm -rf build</CleanCommand>
-        <BuildCommand>mkdir build
-cd build
-cmake -D CMAKE_VERBOSE_MAKEFILE=true ..
+        <BuildCommand>mkdir build &amp;&amp;
+cd build &amp;&amp;
+cmake -D CMAKE_VERBOSE_MAKEFILE=true .. &amp;&amp;
 cmake --build . -- -j`getconf NPROCESSORS_ONLN`
 </BuildCommand>
         <PreprocessFileCommand/>
         <SingleFileCommand/>
         <MakefileGenerationCommand/>
         <ThirdPartyToolName>None</ThirdPartyToolName>
-        <WorkingDirectory/>
+        <WorkingDirectory>$(WorkspacePath)</WorkingDirectory>
       </CustomBuild>
       <AdditionalRules>
         <CustomPostBuild/>
