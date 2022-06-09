@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2021 Rozhuk Ivan <rozhuk.im@gmail.com>
+ * Copyright (c) 2021-2022 Rozhuk Ivan <rozhuk.im@gmail.com>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -39,6 +39,7 @@ typedef struct gtk_mixer_tray_icon_s {
 	GtkStatusIcon *status_icon;
 	GtkMenu *menu;
 	const char *icon_name;
+	GtkWidget *main_window;
 	gmp_dev_p dev;
 	gmp_dev_line_p dev_line;
 } gm_tray_icon_t, *gm_tray_icon_p;
@@ -46,7 +47,7 @@ typedef struct gtk_mixer_tray_icon_s {
 
 
 static gboolean
-gtk_mixer_tray_icon_scroll(GtkStatusIcon *status_icon __unused,
+gtk_mixer_tray_icon_scroll(GtkStatusIcon *status_icon,
     GdkEventScroll *event, gpointer user_data) {
 	gm_tray_icon_p tray_icon = user_data;
 
@@ -63,6 +64,8 @@ gtk_mixer_tray_icon_scroll(GtkStatusIcon *status_icon __unused,
 		tray_icon->dev_line->is_updated = 1;
 		tray_icon->dev_line->write_required ++;
 		gmp_dev_write(tray_icon->dev, 0);
+		gtk_mixer_window_lines_update(tray_icon->main_window);
+		gtk_mixer_tray_icon_update(status_icon);
 		break;
 	default:
 		break;
@@ -171,13 +174,14 @@ gtk_mixer_tray_icon_destroy(GtkWidget *window __unused, gpointer user_data) {
 }
 
 GtkStatusIcon *
-gtk_mixer_tray_icon_create(void) {
+gtk_mixer_tray_icon_create(GtkWidget *main_window) {
 	gm_tray_icon_p tray_icon;
 
 	tray_icon = calloc(1, sizeof(gm_tray_icon_t));
 	if (NULL == tray_icon)
 		return (NULL);
 
+	tray_icon->main_window = main_window;
 	G_GNUC_BEGIN_IGNORE_DEPRECATIONS
 	tray_icon->status_icon = gtk_status_icon_new();
 	G_GNUC_END_IGNORE_DEPRECATIONS

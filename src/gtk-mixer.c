@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2020 - 2021 Rozhuk Ivan <rozhuk.im@gmail.com>
+ * Copyright (c) 2020-2022 Rozhuk Ivan <rozhuk.im@gmail.com>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -162,7 +162,7 @@ on_tray_icon_menu_about_click(GtkMenuItem *menuitem __unused,
 	GtkAboutDialog *dlg = GTK_ABOUT_DIALOG(gtk_about_dialog_new());
 	const char *authors[] = {
 		"",
-		"2020-2021 Rozhuk Ivan",
+		"2020-2022 Rozhuk Ivan",
 		"",
 		"Original xfce4-mixer",
 		"2012 Guido Berhoerster",
@@ -277,7 +277,7 @@ main(int argc, char **argv) {
 
 
 	/* Tray icon. */
-	app.status_icon = gtk_mixer_tray_icon_create();
+	app.status_icon = gtk_mixer_tray_icon_create(app.window);
 	g_signal_connect(app.status_icon, "activate",
 	    G_CALLBACK(gtk_mixer_status_icon_activate), &app);
 	g_signal_connect(app.status_icon, "popup-menu",

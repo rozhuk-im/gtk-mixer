@@ -4,7 +4,7 @@
 [![Build-Ubuntu-latest Actions Status](https://github.com/rozhuk-im/gtk-mixer/workflows/build-ubuntu-latest/badge.svg)](https://github.com/rozhuk-im/gtk-mixer/actions)
 
 
-Rozhuk Ivan <rozhuk.im@gmail.com> 2020 - 2021
+Rozhuk Ivan <rozhuk.im@gmail.com> 2020-2022
 
 GTK-Mixer is GTK based volume control tool ("mixer").\
 GUI from xfce4-mixer: https://gitlab.xfce.org/apps/xfce4-mixer

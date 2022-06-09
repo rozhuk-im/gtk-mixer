@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2020 - 2021 Rozhuk Ivan <rozhuk.im@gmail.com>
+ * Copyright (c) 2020-2022 Rozhuk Ivan <rozhuk.im@gmail.com>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -85,7 +85,7 @@ GtkWidget *gtk_mixer_line_create(gmp_dev_p dev, gmp_dev_line_p dev_line);
 void gtk_mixer_line_update(GtkWidget *container);
 
 
-GtkStatusIcon *gtk_mixer_tray_icon_create(void);
+GtkStatusIcon *gtk_mixer_tray_icon_create(GtkWidget *main_window);
 void gtk_mixer_tray_icon_dev_set(GtkStatusIcon *status_icon, gmp_dev_p dev);
 void gtk_mixer_tray_icon_update(GtkStatusIcon *status_icon);
 
