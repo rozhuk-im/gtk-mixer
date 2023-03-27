@@ -44,7 +44,6 @@ jobs:
             shift
           done
         }
-        brew update
         checkPkgAndInstall ccache cmake gtk+3
 
     - name: Create Build Environment
