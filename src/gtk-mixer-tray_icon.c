@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2021-2022 Rozhuk Ivan <rozhuk.im@gmail.com>
+ * Copyright (c) 2021-2023 Rozhuk Ivan <rozhuk.im@gmail.com>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -166,13 +166,6 @@ gtk_mixer_tray_icon_dev_set(GtkStatusIcon *status_icon, gmp_dev_p dev) {
 	gtk_mixer_tray_icon_update(status_icon);
 }
 
-static void
-gtk_mixer_tray_icon_destroy(GtkWidget *window __unused, gpointer user_data) {
-	gm_tray_icon_p tray_icon = user_data;
-
-	free(tray_icon);
-}
-
 GtkStatusIcon *
 gtk_mixer_tray_icon_create(GtkWidget *main_window) {
 	gm_tray_icon_p tray_icon;
@@ -188,9 +181,6 @@ gtk_mixer_tray_icon_create(GtkWidget *main_window) {
 	g_object_set_data(G_OBJECT(tray_icon->status_icon),
 	    "__gtk_mixer_tray_icon", (void*)tray_icon);
 
-	g_signal_connect(tray_icon->status_icon,
-	    "destroy",
-	    G_CALLBACK(gtk_mixer_tray_icon_destroy), tray_icon);
 	g_signal_connect(G_OBJECT(tray_icon->status_icon),
 	    "scroll-event",
 	    G_CALLBACK(gtk_mixer_tray_icon_scroll), tray_icon);
