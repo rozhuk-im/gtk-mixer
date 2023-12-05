@@ -194,7 +194,7 @@ static const char *channel_name_short[MIXER_CHANNELS_COUNT] = {
 	"TFC",
 	"TFR",
 	"TBL",
-	"TBC"
+	"TBC",
 	"TBR"
 };
 
