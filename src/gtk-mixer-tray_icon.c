@@ -51,8 +51,8 @@ gtk_mixer_tray_icon_scroll(GtkStatusIcon *status_icon,
     GdkEventScroll *event, gpointer user_data) {
 	gm_tray_icon_p tray_icon = user_data;
 
-	if (NULL == tray_icon)
-		return (FALSE);
+	if (NULL == tray_icon ||
+	    NULL == tray_icon->dev_line)
 	if (0 != tray_icon->dev_line->is_read_only)
 		return (FALSE);
 
@@ -79,7 +79,8 @@ gtk_mixer_tray_icon_release(GtkStatusIcon *status_icon,
     GdkEventButton *event, gpointer user_data) {
 	gm_tray_icon_p tray_icon = user_data;
 
-	if (NULL == tray_icon)
+	if (NULL == tray_icon ||
+	    NULL == tray_icon->dev_line)
 		return (FALSE);
 	if (0 != tray_icon->dev_line->is_read_only)
 		return (FALSE);
