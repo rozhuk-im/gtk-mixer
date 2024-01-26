@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2021-2023 Rozhuk Ivan <rozhuk.im@gmail.com>
+ * Copyright (c) 2021-2024 Rozhuk Ivan <rozhuk.im@gmail.com>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -53,6 +53,7 @@ gtk_mixer_tray_icon_scroll(GtkStatusIcon *status_icon,
 
 	if (NULL == tray_icon ||
 	    NULL == tray_icon->dev_line)
+		return (FALSE);
 	if (0 != tray_icon->dev_line->is_read_only)
 		return (FALSE);
 
