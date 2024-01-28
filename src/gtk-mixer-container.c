@@ -65,6 +65,7 @@ gtk_mixer_container_create_contents(GtkWidget *container,
 	const char *line_label;
 	gint num_children[4] = { 0, 0, 0, 0 };
 	gboolean no_controls_visible = TRUE;
+	size_t idx;
 
 	/* Create widgets for all four tabs. */
 	for (size_t i = 0; i < 4; i ++) {
@@ -101,7 +102,7 @@ gtk_mixer_container_create_contents(GtkWidget *container,
 		//	preferences, line_label))
 		//	continue;
 
-		size_t idx = ((0 == line->is_capture) ? 0 : 1);
+		idx = ((0 == line->is_capture) ? 0 : 1);
 		/* Create a regular volume control for this line. */
 		line_label_widget = gtk_label_new(line_label);
 		gtk_grid_attach(GTK_GRID(views[idx]),
