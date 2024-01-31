@@ -40,11 +40,11 @@
       <ResourceCompiler Options=""/>
     </GlobalSettings>
     <Configuration Name="Debug" CompilerType="clang" DebuggerType="GNU gdb debugger" Type="Executable" BuildCmpWithGlobalSettings="append" BuildLnkWithGlobalSettings="append" BuildResWithGlobalSettings="append">
-      <Compiler Options="-g;-O0;-Wall" C_Options="-Weverything;-ftrapv;-g -DDEBUG;-O0;-fwrapv;-fstack-protector-all;-Wall;-g3 -ggdb;-Wno-reserved-id-macro;-Wno-gnu-zero-variadic-macro-arguments;-Wno-variadic-macros;-Wno-documentation;-Wno-documentation-unknown-command;-Wno-padded;-Wno-cast-qual" Assembler="" Required="yes" PreCompiledHeader="" PCHInCommandLine="no" PCHFlags="" PCHFlagsPolicy="0"/>
+      <Compiler Options="-g;-O0;-Wall" C_Options="-ftrapv;-g -DDEBUG;-O0;-fwrapv;-fstack-protector-all;-Wall;-g3 -ggdb;-Wno-reserved-id-macro;-Wno-gnu-zero-variadic-macro-arguments;-Wno-variadic-macros;-Wno-documentation;-Wno-documentation-unknown-command;-Wno-padded;-Wno-cast-qual;-Wno-cast-function-type-strict;-Wno-reserved-identifier;-Wno-unsafe-buffer-usage" Assembler="" Required="yes" PreCompiledHeader="" PCHInCommandLine="no" PCHFlags="" PCHFlagsPolicy="0"/>
       <Linker Options="" Required="yes"/>
       <ResourceCompiler Options="" Required="no"/>
-      <General OutputFile="$(IntermediateDirectory)/$(ProjectName)" IntermediateDirectory="$(ProjectPath)/build/src/" Command="$(OutputFile)" CommandArguments="--start-hidden" UseSeparateDebugArgs="no" DebugArguments="" WorkingDirectory="$(IntermediateDirectory)" PauseExecWhenProcTerminates="yes" IsGUIProgram="no" IsEnabled="yes"/>
-      <BuildSystem Name="Default"/>
+      <General OutputFile="$(IntermediateDirectory)/src/$(ProjectName)" IntermediateDirectory="$(ProjectPath)/$(ConfigurationName)" Command="$(OutputFile)" CommandArguments="--start-hidden" UseSeparateDebugArgs="no" DebugArguments="" WorkingDirectory="" PauseExecWhenProcTerminates="yes" IsGUIProgram="no" IsEnabled="yes"/>
+      <BuildSystem Name="CodeLite Makefile Generator"/>
       <Environment EnvVarSetName="&lt;Use Defaults&gt;" DbgSetName="&lt;Use Defaults&gt;">
         <![CDATA[]]>
       </Environment>
@@ -55,15 +55,25 @@
       </Debugger>
       <PreBuild/>
       <PostBuild/>
-      <CustomBuild Enabled="no">
-        <RebuildCommand/>
-        <CleanCommand/>
-        <BuildCommand/>
+      <CustomBuild Enabled="yes">
+        <Target Name="Configure">mkdir $(ProjectPath)/$(ConfigurationName) &amp;&amp;
+cd $(ProjectPath)/$(ConfigurationName) &amp;&amp;
+cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_VERBOSE_MAKEFILE=true -DENABLE_ALSA=true ..
+</Target>
+        <RebuildCommand>rm -rf $(ProjectPath)/$(ConfigurationName) &amp;&amp;
+mkdir $(ProjectPath)/$(ConfigurationName) &amp;&amp;
+cd $(ProjectPath)/$(ConfigurationName) &amp;&amp;
+cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_VERBOSE_MAKEFILE=true -DENABLE_ALSA=true .. &amp;&amp;
+make -C $(ProjectPath)/$(ConfigurationName) -j`getconf NPROCESSORS_ONLN`
+</RebuildCommand>
+        <CleanCommand>rm -rf $(ProjectPath)/$(ConfigurationName)</CleanCommand>
+        <BuildCommand>make -C $(ProjectPath)/$(ConfigurationName) -j`getconf NPROCESSORS_ONLN`
+</BuildCommand>
         <PreprocessFileCommand/>
         <SingleFileCommand/>
         <MakefileGenerationCommand/>
         <ThirdPartyToolName>None</ThirdPartyToolName>
-        <WorkingDirectory/>
+        <WorkingDirectory>$(WorkspacePath)</WorkingDirectory>
       </CustomBuild>
       <AdditionalRules>
         <CustomPostBuild/>
@@ -82,7 +92,7 @@
       </Compiler>
       <Linker Options="" Required="yes"/>
       <ResourceCompiler Options="" Required="no"/>
-      <General OutputFile="$(IntermediateDirectory)/$(ProjectName)" IntermediateDirectory="$(ProjectPath)/build/src/" Command="$(OutputFile)" CommandArguments="" UseSeparateDebugArgs="no" DebugArguments="" WorkingDirectory="$(IntermediateDirectory)" PauseExecWhenProcTerminates="yes" IsGUIProgram="no" IsEnabled="yes"/>
+      <General OutputFile="$(IntermediateDirectory)/src/$(ProjectName)" IntermediateDirectory="$(ProjectPath)/$(ConfigurationName)" Command="$(OutputFile)" CommandArguments="" UseSeparateDebugArgs="no" DebugArguments="" WorkingDirectory="$(IntermediateDirectory)" PauseExecWhenProcTerminates="yes" IsGUIProgram="no" IsEnabled="yes"/>
       <BuildSystem Name="Default"/>
       <Environment EnvVarSetName="&lt;Use Defaults&gt;" DbgSetName="&lt;Use Defaults&gt;">
         <![CDATA[]]>
@@ -95,13 +105,14 @@
       <PreBuild/>
       <PostBuild/>
       <CustomBuild Enabled="yes">
+        <Target Name="Configure">mkdir $(ProjectPath)/$(ConfigurationName) &amp;&amp;
+cd $(ProjectPath)/$(ConfigurationName) &amp;&amp;
+cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_VERBOSE_MAKEFILE=true ..
+
+</Target>
         <RebuildCommand/>
-        <CleanCommand>rm -rf build</CleanCommand>
-        <BuildCommand>mkdir build &amp;&amp;
-cd build &amp;&amp;
-cmake -D CMAKE_VERBOSE_MAKEFILE=true .. &amp;&amp;
-cmake --build . -- -j`getconf NPROCESSORS_ONLN`
-</BuildCommand>
+        <CleanCommand>rm -rf $(ProjectPath)/$(ConfigurationName)</CleanCommand>
+        <BuildCommand>make -C $(ProjectPath)/$(ConfigurationName) -j`getconf NPROCESSORS_ONLN`</BuildCommand>
         <PreprocessFileCommand/>
         <SingleFileCommand/>
         <MakefileGenerationCommand/>
