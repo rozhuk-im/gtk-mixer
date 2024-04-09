@@ -11,6 +11,7 @@
     <File Name=".github/workflows/build-macos-latest.yml"/>
   </VirtualDirectory>
   <VirtualDirectory Name="root">
+    <File Name=".editorconfig"/>
     <File Name="readme.md"/>
     <File Name="config.h.cmake"/>
     <File Name="CMakeLists.txt"/>
