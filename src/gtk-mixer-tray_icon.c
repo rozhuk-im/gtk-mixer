@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2021-2024 Rozhuk Ivan <rozhuk.im@gmail.com>
+ * Copyright (c) 2021-2025 Rozhuk Ivan <rozhuk.im@gmail.com>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -37,7 +37,6 @@
 
 typedef struct gtk_mixer_tray_icon_s {
 	GtkStatusIcon *status_icon;
-	GtkMenu *menu;
 	const char *icon_name;
 	GtkWidget *main_window;
 	gmp_dev_p dev;
