@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2020-2022 Rozhuk Ivan <rozhuk.im@gmail.com>
+ * Copyright (c) 2020-2025 Rozhuk Ivan <rozhuk.im@gmail.com>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -41,12 +41,12 @@
 #include <unistd.h> /* close, write, sysconf */
 
 #ifdef HAVE_CONFIG_H
-#include "config.h"
+#	include "config.h"
 #else
-#define PACKAGE_NAME "gtk-mixer"
-#define VERSION "1.0.0"
-#define PACKAGE_DESCRIPTION ""
-#define PACKAGE_URL ""
+#	define PACKAGE_NAME		"gtk-mixer"
+#	define VERSION			"1.0.0"
+#	define PACKAGE_DESCRIPTION	""
+#	define PACKAGE_URL		""
 #endif
 
 #define APP_ICON_NAME "multimedia-volume-control"
