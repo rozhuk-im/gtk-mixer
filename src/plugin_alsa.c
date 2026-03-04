@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2020 - 2021 Rozhuk Ivan <rozhuk.im@gmail.com>
+ * Copyright (c) 2020-2024 Rozhuk Ivan <rozhuk.im@gmail.com>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -44,10 +44,80 @@
 #include "plugin_api.h"
 
 
+/* snd_mixer_selem_channel_id_t */
+static const uint8_t alsa_ch_map[] = {
+	MIXER_CHANNEL_FL,	/* Front left - SND_MIXER_SCHN_FRONT_LEFT */
+	MIXER_CHANNEL_FR,	/* Front right - SND_MIXER_SCHN_FRONT_RIGHT */
+	MIXER_CHANNEL_TBL,	/* Rear left - SND_MIXER_SCHN_REAR_LEFT */
+	MIXER_CHANNEL_TBR,	/* Rear right - SND_MIXER_SCHN_REAR_RIGHT */
+	MIXER_CHANNEL_FC,	/* Front center - SND_MIXER_SCHN_FRONT_CENTER */
+	MIXER_CHANNEL_LFE,	/* Woofer - SND_MIXER_SCHN_WOOFER */
+	MIXER_CHANNEL_SL,	/* Side Left - SND_MIXER_SCHN_SIDE_LEFT */
+	MIXER_CHANNEL_SR,	/* Side Right - SND_MIXER_SCHN_SIDE_RIGHT */
+	MIXER_CHANNEL_TBC	/* Rear Center - SND_MIXER_SCHN_REAR_CENTER */
+};
+
+
+static const char *ignored_device_list[] = {
+	"cards",
+	"center_lfe",
+	"default",
+	"dmix",
+	"dsnoop",
+	"file",
+	"front",
+	"hdmi",
+	"hw",
+	"iec958",
+	"modem",
+	"null",
+#ifndef DEBUG
+	"oss", /* We have OSS plugin in this project. */
+#endif
+	"phoneline",
+	"plug",
+	"plughw",
+	"pulse",
+	"rear",
+	"samplerate",
+	"shm",
+	"side",
+	"spdif",
+	"surround40",
+	"surround41",
+	"surround50",
+	"surround51",
+	"surround71",
+	"sysdefault",
+	"tee",
+};
+
+
+static int
+is_ignored_device(const char *name, const size_t name_size) {
+	size_t dev_name_size;
+
+	if (NULL == name ||
+	    0 == name_size)
+		return (1);
+	for (size_t i = 0; i < nitems(ignored_device_list); i ++) {
+		dev_name_size = strlen(ignored_device_list[i]);
+		if (name_size < dev_name_size)
+			continue;
+		if (0 != memcmp(name, ignored_device_list[i], dev_name_size))
+			continue;
+		if (name_size == dev_name_size || ':' == name[dev_name_size])
+			return 1;
+	}
+
+	return (0);
+}
+
 static int
 alsa_list_devs(gm_plugin_p plugin, gmp_dev_list_p dev_list) {
-	int error, dev_index = -1;
-	char dev_path[32];
+	int error = 0, dev_index = -1;
+	void **hints = NULL;
+	char *name = NULL, *desc = NULL, dev_path[32];
 	gmp_dev_t dev = { .name = dev_path };
 	snd_ctl_t *ctl = NULL;
 	snd_ctl_card_info_t *info = NULL;
@@ -55,12 +125,16 @@ alsa_list_devs(gm_plugin_p plugin, gmp_dev_list_p dev_list) {
 	if (NULL == plugin || NULL == dev_list)
 		return (EINVAL);
 
+	if (0 != snd_ctl_card_info_malloc(&info))
+		return (ENOMEM);
+
 	/* Auto detect. */
-	snd_ctl_card_info_alloca(&info);
+	/* Physical sound cards. */
 	while (0 == snd_card_next(&dev_index) && -1 != dev_index) {
 		snprintf(dev_path, sizeof(dev_path), "hw:%i", dev_index);
-		if (snd_ctl_open(&ctl, dev_path, 0) < 0)
+		if (0 > snd_ctl_open(&ctl, dev_path, 0))
 			continue;
+		snd_ctl_card_info_clear(info);
 		error = snd_ctl_card_info(ctl, info);
 		snd_ctl_close(ctl);
 		if (0 != error)
@@ -69,24 +143,102 @@ alsa_list_devs(gm_plugin_p plugin, gmp_dev_list_p dev_list) {
 		//snd_ctl_card_info_get_longname(info);
 		//snd_ctl_card_info_get_mixername(info);
 		//snd_ctl_card_info_get_components(info);
-		dev.priv = (void*)(size_t)dev_index;
+		dev.priv = strdup(dev.name);
 		error = gmp_dev_list_add(plugin, dev_list, &dev);
-		if (0 != error)
-			return (error);
-		break;
+		if (0 != error) {
+			free(dev.priv);
+			goto err_out;
+		}
 	}
 
-	return (0);
+	/* Virtual sound cards. */
+	if (0 > snd_device_name_hint(-1, "pcm", &hints))
+		goto err_out;
+	for (size_t i = 0; NULL != hints[i]; i ++) {
+		free(name);
+		name = snd_device_name_get_hint(hints[i], "NAME");
+		if (is_ignored_device(name, strlen(name)))
+			continue;
+		free(desc);
+		desc = snd_device_name_get_hint(hints[i], "DESC");
+		if (NULL == desc) {
+			if (0 > snd_ctl_open(&ctl, name, 0))
+				continue;
+			snd_ctl_card_info_clear(info);
+			error = snd_ctl_card_info(ctl, info);
+			snd_ctl_close(ctl);
+			if (0 != error)
+				continue;
+			desc = strdup(snd_ctl_card_info_get_name(info));
+		}
+		dev.name = name;
+		dev.description = desc;
+		dev.priv = strdup(dev.name);
+		error = gmp_dev_list_add(plugin, dev_list, &dev);
+		if (0 != error) {
+			free(dev.priv);
+			goto err_out;
+		}
+	}
+	error = 0;
+
+err_out:
+	free(name);
+	free(desc);
+	snd_device_name_free_hint(hints);
+	snd_ctl_card_info_free(info);
+
+	return (error);
 }
 
 static int
 alsa_dev_init(gmp_dev_p dev) {
-	//gmp_dev_line_p dev_line;
+	int error = 0;
+	gmp_dev_line_p dev_line;
+	snd_mixer_t *mixer = NULL;
+	snd_mixer_elem_t *elem;
 
 	if (NULL == dev)
 		return (EINVAL);
 
-	return (0);
+	if (0 > snd_mixer_open(&mixer, 0))
+		return (EINVAL);
+	if (0 > snd_mixer_attach(mixer, dev->priv))
+		goto err_out;
+	if (0 > snd_mixer_selem_register(mixer, NULL, NULL))
+		goto err_out;
+	if (0 > snd_mixer_load(mixer))
+		goto err_out;
+
+	for (elem = snd_mixer_first_elem(mixer); NULL != elem;
+	     elem = snd_mixer_elem_next(elem)) {
+		if (0 == snd_mixer_selem_is_active(elem))
+			continue;
+		if (0 == snd_mixer_selem_has_playback_volume(elem) &&
+		    0 == snd_mixer_selem_has_capture_volume(elem))
+			continue;
+		/* Add line. */
+		error = gmp_dev_line_add(dev, snd_mixer_selem_get_name(elem),
+		    &dev_line);
+		if (0 != error)
+			goto err_out;
+		dev_line->priv = (void*)snd_mixer_selem_get_index(elem); /* Store line index. */
+		for (int i = 0; i < (int)nitems(alsa_ch_map); i ++) {
+			if (0 == snd_mixer_selem_has_playback_channel(elem, i) &&
+			    0 == snd_mixer_selem_has_capture_channel(elem, i))
+				continue;
+			dev_line->chan_map |= (((uint32_t)1) << alsa_ch_map[i]);
+			dev_line->chan_vol_count ++;
+		}
+		dev_line->is_capture = (0 != snd_mixer_selem_has_capture_volume(elem));
+		dev_line->is_read_only = 0;
+		dev_line->has_enable = snd_mixer_selem_has_playback_switch(elem);
+	}
+
+err_out:
+	snd_mixer_close(mixer);
+
+	return (error);
 }
 
 static void
