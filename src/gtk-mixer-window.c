@@ -1,7 +1,7 @@
 /*-
  * Copyright (c) 2008 Jannis Pohlmann <jannis@xfce.org>
  * Copyright (c) 2012 Guido Berhoerster <guido+xfce@berhoerster.name>
- * Copyright (c) 2020 - 2021 Rozhuk Ivan <rozhuk.im@gmail.com>
+ * Copyright (c) 2020-2025 Rozhuk Ivan <rozhuk.im@gmail.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -36,6 +36,7 @@ typedef struct gtk_mixer_window_s {
 
 	GtkWidget *soundcard_combo;
 	GtkWidget *makedef_button;
+	GtkWidget *makedef_menu;
 
 	/* Active mixer control set. */
 	GtkWidget *mixer_container;
@@ -58,7 +59,7 @@ gtk_mixer_window_soundcard_changed(GtkWidget *combo __unused,
 		gtk_window_set_title(GTK_WINDOW(gm_win->window), title);
 		gtk_widget_set_sensitive(gm_win->makedef_button,
 		    (dev->plugin->descr->can_set_default_device &&
-		     0 == gmp_dev_is_default(dev)));
+		     DEV_IS_ALL != gmp_dev_is_default(dev)));
 	} else {
 		gtk_window_set_title(GTK_WINDOW(gm_win->window), _("Audio Mixer"));
 		gtk_widget_set_sensitive(gm_win->makedef_button, FALSE);
@@ -68,6 +69,32 @@ gtk_mixer_window_soundcard_changed(GtkWidget *combo __unused,
 }
 
 static void
+on_makedef_menu_click_handler(gpointer user_data, const uint32_t type) {
+	gm_window_p gm_win = user_data;
+	gmp_dev_p dev;
+
+	dev = gtk_mixer_devs_combo_cur_get(gm_win->soundcard_combo);
+	if (NULL == dev)
+		return;
+	gmp_dev_set_default(dev, type);
+	gtk_mixer_devs_combo_update(gm_win->soundcard_combo);
+}
+static void
+on_makedef_menu_play_click(GtkMenuItem *menuitem __unused, gpointer user_data) {
+
+	on_makedef_menu_click_handler(user_data, DEV_IS_PLAY);
+}
+static void
+on_makedef_menu_capture_click(GtkMenuItem *menuitem __unused, gpointer user_data) {
+
+	on_makedef_menu_click_handler(user_data, DEV_IS_CAPTURE);
+}
+static void
+on_makedef_menu_all_click(GtkMenuItem *menuitem __unused, gpointer user_data) {
+
+	on_makedef_menu_click_handler(user_data, DEV_IS_ALL);
+}
+static void
 gtk_mixer_makedef_button(GtkButton *button __unused, gpointer user_data) {
 	gm_window_p gm_win = user_data;
 	gmp_dev_p dev;
@@ -75,8 +102,39 @@ gtk_mixer_makedef_button(GtkButton *button __unused, gpointer user_data) {
 	dev = gtk_mixer_devs_combo_cur_get(gm_win->soundcard_combo);
 	if (NULL == dev)
 		return;
-	gmp_dev_set_default(dev);
-	gtk_mixer_devs_combo_update(gm_win->soundcard_combo);
+	if (0 == gmp_is_def_dev_separate(dev->plugin)) {
+		on_makedef_menu_click_handler(user_data, DEV_IS_ALL);
+		return;
+	}
+
+	if (NULL == gm_win->makedef_menu) {
+		GtkWidget *mi;
+		gm_win->makedef_menu = gtk_menu_new();
+
+		/* Play. */
+		mi = gtk_menu_item_new_with_mnemonic(_("Play"));
+		g_signal_connect(G_OBJECT(mi), "activate",
+		    G_CALLBACK(on_makedef_menu_play_click), user_data);
+		gtk_menu_shell_append(GTK_MENU_SHELL(gm_win->makedef_menu),
+		    mi);
+
+		/* Rec. */
+		mi = gtk_menu_item_new_with_mnemonic(_("Capture"));
+		g_signal_connect(G_OBJECT(mi), "activate",
+		    G_CALLBACK(on_makedef_menu_capture_click), user_data);
+		gtk_menu_shell_append(GTK_MENU_SHELL(gm_win->makedef_menu),
+		    mi);
+
+		/* All. */
+		mi = gtk_menu_item_new_with_mnemonic(_("Play + Capture"));
+		g_signal_connect(G_OBJECT(mi), "activate",
+		    G_CALLBACK(on_makedef_menu_all_click), user_data);
+		gtk_menu_shell_append(GTK_MENU_SHELL(gm_win->makedef_menu),
+		    mi);
+
+		gtk_widget_show_all(GTK_WIDGET(gm_win->makedef_menu));
+	}
+	gtk_menu_popup_at_pointer(GTK_MENU(gm_win->makedef_menu), NULL);
 }
 
 static void
@@ -93,7 +151,7 @@ gtk_mixer_window_destroy(GtkWidget *window __unused, gpointer user_data) {
 GtkWidget *
 gtk_mixer_window_create(void) {
 	gm_window_p gm_win;
-	GtkWidget *label, *vbox, *hbox, *mixer_frame;
+	GtkWidget *vbox, *hbox, *mixer_frame;
 
 	gm_win = calloc(1, sizeof(gm_window_t));
 	if (NULL == gm_win)
@@ -131,17 +189,11 @@ gtk_mixer_window_create(void) {
 	gtk_widget_show(hbox);
 
 	/* Top line. */
-	label = gtk_label_new_with_mnemonic(_("Sound _card:"));
-	gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, FALSE, 0);
-	gtk_widget_show(label);
-
 	gm_win->soundcard_combo = gtk_mixer_devs_combo_create();
 	g_signal_connect(gm_win->soundcard_combo, "changed",
 	    G_CALLBACK(gtk_mixer_window_soundcard_changed), gm_win);
 	gtk_box_pack_start(
 	    GTK_BOX(hbox), gm_win->soundcard_combo, TRUE, TRUE, 0);
-	gtk_label_set_mnemonic_widget(
-	    GTK_LABEL(label), gm_win->soundcard_combo);
 	gtk_widget_show(gm_win->soundcard_combo);
 	
 	gm_win->makedef_button = gtk_button_new_from_icon_name("audio-card",
@@ -225,7 +277,7 @@ gtk_mixer_window_dev_list_update(GtkWidget *window, gmp_dev_list_p dev_list) {
 	    dev->plugin->descr->can_set_default_device) {
 		gtk_mixer_devs_combo_update(gm_win->soundcard_combo);
 		gtk_widget_set_sensitive(gm_win->makedef_button,
-		    (0 == gmp_dev_is_default(dev)));
+		    (DEV_IS_ALL != gmp_dev_is_default(dev)));
 	}
 }
 

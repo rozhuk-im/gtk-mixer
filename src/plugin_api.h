@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2020 - 2021 Rozhuk Ivan <rozhuk.im@gmail.com>
+ * Copyright (c) 2020-2025 Rozhuk Ivan <rozhuk.im@gmail.com>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -90,6 +90,9 @@ typedef struct gtk_mixer_plugin_description_s {
 	/* Optional. 0 - default sound device not changed since last call. */
 	int (*is_def_dev_changed)(gm_plugin_p plugin);
 
+	/* Optional. 0 - default sound device play+rec. Other: play and rec may set different devs. */
+	int (*is_def_dev_separate)(gm_plugin_p plugin);
+
 	/* Get devices list. 0 - no error. */
 	int (*list_devs)(gm_plugin_p plugin, gmp_dev_list_p devs);
 
@@ -109,10 +112,14 @@ typedef struct gtk_mixer_plugin_description_s {
 	void (*dev_destroy)(gmp_dev_p dev);
 
 	/* Optional. non 0 - this is default sound device. */
+	#define DEV_IS_UNSED	0x00
+	#define DEV_IS_PLAY	0x01
+	#define DEV_IS_CAPTURE	0x02
+	#define DEV_IS_ALL	(DEV_IS_PLAY | DEV_IS_CAPTURE)
 	int (*dev_is_default)(gmp_dev_p dev);
 
 	/* Optional. Make device as system default. 0 - no error. */
-	int (*dev_set_default)(gmp_dev_p dev);
+	int (*dev_set_default)(gmp_dev_p dev, const uint32_t type);
 
 	/* Optional. Can be used to free device line priv data that was set inside dev_init(). */
 	void (*dev_line_destroy)(gmp_dev_p dev, gmp_dev_line_p dev_line);
@@ -254,6 +261,8 @@ void gmp_uninit(gm_plugin_p plugins, const size_t plugins_count);
 
 int gmp_is_def_dev_changed(gm_plugin_p plugins, const size_t plugins_count);
 
+int gmp_is_def_dev_separate(gm_plugin_p plugin);
+
 int gmp_list_devs(gm_plugin_p plugins, const size_t plugins_count,
     gmp_dev_list_p dev_list);
 /* Does not free dev_list, work only with stored data. */
@@ -261,17 +270,17 @@ void gmp_dev_list_clear(gmp_dev_list_p dev_list);
 gmp_dev_p gmp_dev_find_same(gmp_dev_list_p dev_list, gmp_dev_p dev);
 int gmp_dev_list_add(gm_plugin_p plugin, gmp_dev_list_p dev_list,
     gmp_dev_p dev);
-gmp_dev_p gmp_dev_list_get_default(gmp_dev_list_p dev_list);
+gmp_dev_p gmp_dev_list_get_playback_default(gmp_dev_list_p dev_list);
 
 int gmp_is_list_devs_changed(gm_plugin_p plugins, const size_t plugins_count);
 
 int gmp_dev_init(gmp_dev_p dev);
 void gmp_dev_uninit(gmp_dev_p dev);
 
-/* Is mixer dev default?. */
+/* Is mixer dev default?. Return flags DEV_IS_*. */
 int gmp_dev_is_default(gmp_dev_p dev);
 /* Make mixer dev default. */
-int gmp_dev_set_default(gmp_dev_p dev);
+int gmp_dev_set_default(gmp_dev_p dev, const uint32_t type);
 
 /* Read from mixer dev. */
 int gmp_dev_read(gmp_dev_p dev, int force);

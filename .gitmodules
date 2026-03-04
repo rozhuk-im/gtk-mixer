@@ -1,0 +1,3 @@
+[submodule "3rdparty/virtual_oss"]
+	path = 3rdparty/virtual_oss
+	url = https://github.com/freebsd/virtual_oss.git

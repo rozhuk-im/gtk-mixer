@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2020 - 2021 Rozhuk Ivan <rozhuk.im@gmail.com>
+ * Copyright (c) 2020-2025 Rozhuk Ivan <rozhuk.im@gmail.com>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -150,6 +150,17 @@ gmp_is_def_dev_changed(gm_plugin_p plugins, const size_t plugins_count) {
 
 
 int
+gmp_is_def_dev_separate(gm_plugin_p plugin) {
+
+	if (NULL == plugin)
+		return (0);
+	if (NULL == plugin->descr->is_def_dev_separate)
+		return (0);
+	return (plugin->descr->is_def_dev_separate(plugin));
+}
+
+
+int
 gmp_list_devs(gm_plugin_p plugins, const size_t plugins_count,
     gmp_dev_list_p dev_list) {
 	int error;
@@ -245,12 +256,12 @@ gmp_dev_list_add(gm_plugin_p plugin, gmp_dev_list_p dev_list,
 }
 
 gmp_dev_p
-gmp_dev_list_get_default(gmp_dev_list_p dev_list) {
+gmp_dev_list_get_playback_default(gmp_dev_list_p dev_list) {
 
 	if (NULL == dev_list)
 		return (NULL);
 	for (size_t i = 0; i < dev_list->count; i ++) {
-		if (gmp_dev_is_default(&dev_list->devs[i]))
+		if (0 != (DEV_IS_PLAY & gmp_dev_is_default(&dev_list->devs[i])))
 			return (&dev_list->devs[i]);
 	}
 
@@ -329,18 +340,18 @@ gmp_dev_is_default(gmp_dev_p dev) {
 
 	if (NULL == dev ||
 	    NULL == dev->plugin->descr->dev_is_default)
-		return (0);
+		return (DEV_IS_UNSED);
 	return (dev->plugin->descr->dev_is_default(dev));
 }
 
 int
-gmp_dev_set_default(gmp_dev_p dev) {
+gmp_dev_set_default(gmp_dev_p dev, const uint32_t type) {
 
 	if (NULL == dev)
 		return (EINVAL);
 	if (NULL == dev->plugin->descr->dev_set_default)
 		return (0);
-	return (dev->plugin->descr->dev_set_default(dev));
+	return (dev->plugin->descr->dev_set_default(dev, type));
 }
 
 

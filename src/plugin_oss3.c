@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2020 - 2021 Rozhuk Ivan <rozhuk.im@gmail.com>
+ * Copyright (c) 2020-2025 Rozhuk Ivan <rozhuk.im@gmail.com>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -31,15 +31,18 @@
 #include <sys/param.h>
 #include <sys/types.h>
 #if defined(__DragonFly__) || defined(__FreeBSD__)
-#include <sys/sysctl.h>
-#define HAS_FEATURE_DEFAULT_DEV 1
+#	include <sys/sysctl.h>
+#	define HAVE_FEATURE_DEFAULT_DEV 1
+#	ifdef HAVE_VIRTUAL_OSS
+#		include "../3rdparty/virtual_oss/virtual_oss.h"
+#	endif
 #endif
 #include <sys/ioctl.h>
 #include <sys/stat.h>
 #if defined(__OpenBSD__)
-	#include <soundcard.h>
+#	include <soundcard.h>
 #else
-	#include <sys/soundcard.h>
+#	include <sys/soundcard.h>
 #endif
 
 #include <errno.h>
@@ -51,9 +54,15 @@
 
 #include "plugin_api.h"
 
+#define	DEV_IDX(_play, _rec)	((uint32_t)(_play) | (((uint32_t)(_rec)) << 16))
+#define	DEV_IDX_PLAY(_idx)	(0xffff & (_idx))
+#define	DEV_IDX_CAPTURE(_idx)	(0xffff & ((_idx) >> 16))
 
-#define PATH_DEV_MIXER	"/dev/mixer"
-#define MIXER_ALLOC_CNT	8
+#define PATH_DEV_MIXER		"/dev/mixer"
+#define MIXER_ALLOC_CNT		8
+#define VOSS_CTL_PATH_ENVVAR	"OSS_VOSS_CTL_PATH"
+#define VOSS_CTL_PATH_DEF	"/dev/vdsp.ctl"
+
 
 static const char *oss_line_labels[] = SOUND_DEVICE_LABELS;
 
@@ -74,8 +83,8 @@ static const uint32_t mixer_state_id[] = {
 };
 
 typedef struct oss_device_context_s {
-	int state[nitems(mixer_state_id)];
-	int dev_index;
+	int		state[nitems(mixer_state_id)];
+	uint32_t	dev_index;
 } oss_dev_ctx_t, *oss_dev_ctx_p;
 
 
@@ -87,21 +96,31 @@ typedef struct oss_mixer_device_state_s {
 } oss_dev_state_t, *oss_dev_state_p;
 
 typedef struct oss_context_s {
-	int def_dev_index;
-	oss_dev_state_p dev_state;
-	size_t dev_state_count;
+	uint32_t	def_dev_index;
+	oss_dev_state_p	dev_state;
+	size_t		dev_state_count;
+	char		voss_ctl[PATH_MAX];
 } oss_ctx_t, *oss_ctx_p;
+
+
+static int oss_is_def_dev_separate(gm_plugin_p plugin);
 
 
 static int
 oss_init(gm_plugin_p plugin) {
+	char *tmp;
+	oss_ctx_p oss_ctx;
 
 	if (NULL == plugin)
 		return (EINVAL);
 
-	plugin->priv = calloc(1, sizeof(oss_ctx_t));
-	if (NULL == plugin->priv)
+	oss_ctx = calloc(1, sizeof(oss_ctx_t));
+	if (NULL == oss_ctx)
 		return (ENOMEM);
+	plugin->priv = oss_ctx;
+	tmp = getenv(VOSS_CTL_PATH_ENVVAR);
+	strlcpy(oss_ctx->voss_ctl, ((NULL != tmp) ? tmp : VOSS_CTL_PATH_DEF),
+	    sizeof(oss_ctx->voss_ctl));
 
 	return (0);
 }
@@ -121,47 +140,123 @@ oss_uninit(gm_plugin_p plugin) {
 }
 
 
-#ifdef HAS_FEATURE_DEFAULT_DEV
-static int
-oss_default_dev_get(void) {
-	int dev_idx = -1;
+#ifdef HAVE_FEATURE_DEFAULT_DEV
+static uint32_t
+oss_default_dev_get(gm_plugin_p plugin) {
+	int rc;
+	uint32_t dev_idx = (~(uint32_t)0);
 	size_t sz;
+#ifdef HAVE_VIRTUAL_OSS
+	int fd;
+	struct virtual_oss_system_info vosi;
+#endif
 
 	/* Default sound device. */
-	sz = sizeof(int);
-	if (0 != sysctlbyname("hw.snd.default_unit", &dev_idx, &sz,
-	    NULL, 0)) {
-		return (-1);
+	if (0 == oss_is_def_dev_separate(plugin)) {
+		sz = sizeof(int);
+		if (0 != sysctlbyname("hw.snd.default_unit", &rc, &sz, NULL, 0))
+			return (dev_idx);
+		dev_idx = DEV_IDX((uint32_t)rc, (uint32_t)rc);
 	}
-
+#ifdef HAVE_VIRTUAL_OSS
+	else {
+		if (NULL == plugin || NULL == plugin->priv)
+			return (dev_idx);
+		fd = open(((oss_ctx_p)plugin->priv)->voss_ctl, O_RDONLY);
+		if (-1 == fd)
+			return (dev_idx);
+		rc = ioctl(fd, VIRTUAL_OSS_GET_SYSTEM_INFO, &vosi);
+		close(fd);
+		if (-1 == rc)
+			return (dev_idx);
+		vosi.rx_device_name[(sizeof(vosi.rx_device_name) - 1)] = 0; /* Capture/Record. */
+		vosi.tx_device_name[(sizeof(vosi.tx_device_name) - 1)] = 0; /* Playback. */
+		dev_idx = DEV_IDX(
+		    atoi(&vosi.tx_device_name[(sizeof("/dev/dsp") - 1)]),
+		    atoi(&vosi.rx_device_name[(sizeof("/dev/dsp") - 1)]));
+	}
+#endif
 	return (dev_idx);
 }
 static int
-oss_default_dev_set(int dev_idx) {
-	size_t sz = sizeof(int);
+oss_default_dev_set(gm_plugin_p plugin, uint32_t dev_idx, const uint32_t type) {
+	int rc;
+	size_t sz;
+#ifdef HAVE_VIRTUAL_OSS
+	int fd;
+	char options[VIRTUAL_OSS_OPTIONS_MAX] = {}, *opt_mode;
+#endif
 
-	if (0 != sysctlbyname("hw.snd.default_unit", NULL, 0,
-	    &dev_idx, sz)) {
-		return (-1);
+	if (0 == oss_is_def_dev_separate(plugin)) {
+		if (0 == (DEV_IS_ALL & type))
+			return (-1);
+		rc = (int)dev_idx;
+		sz = sizeof(int);
+		if (0 != sysctlbyname("hw.snd.default_unit", NULL, 0, &rc, sz))
+			return (-1);
 	}
+#ifdef HAVE_VIRTUAL_OSS
+	else {
+		switch (type) {
+		case DEV_IS_PLAY:
+			opt_mode = "P";
+			break;
+		case DEV_IS_CAPTURE:
+			opt_mode = "R";
+			break;
+		case DEV_IS_ALL:
+			opt_mode = "f";
+			break;
+		default:
+			return (-1);
+		}
 
+		if (NULL == plugin || NULL == plugin->priv)
+			return (-1);
+		fd = open(((oss_ctx_p)plugin->priv)->voss_ctl, O_RDWR);
+		if (-1 == fd)
+			return (-1);
+		snprintf(options, sizeof(options), "-%s /dev/dsp%i",
+		    opt_mode, (int)dev_idx);
+		rc = ioctl(fd, VIRTUAL_OSS_ADD_OPTIONS, options);
+		close(fd);
+		if (-1 == rc || 0 != options[0])
+			return (-1);
+	}
+#endif
 	return (0);
 }
 
 static int
 oss_is_def_dev_changed(gm_plugin_p plugin) {
-	int ret, new_dev;
+	int ret;
+	uint32_t new_dev;
 	oss_ctx_p oss_ctx;
 
 	if (NULL == plugin || NULL == plugin->priv)
 		return (0);
 
 	oss_ctx = plugin->priv;
-	new_dev = oss_default_dev_get();
+	new_dev = oss_default_dev_get(plugin);
 	ret = (oss_ctx->def_dev_index != new_dev);
 	oss_ctx->def_dev_index = new_dev;
 
 	return (ret);
+}
+
+static int
+oss_is_def_dev_separate(gm_plugin_p plugin) {
+#ifdef HAVE_VIRTUAL_OSS
+	int basename_clone = 1;
+	size_t sz = sizeof(int);
+
+	if (0 != sysctlbyname("hw.snd.basename_clone", &basename_clone, &sz,
+	    NULL, 0))
+		return (0);
+	return ((0 == basename_clone));
+#else
+	return (0);
+#endif
 }
 #endif
 
@@ -215,7 +310,7 @@ oss_list_devs(gm_plugin_p plugin, gmp_dev_list_p dev_list) {
 		dev_ctx = calloc(1, sizeof(oss_dev_ctx_t));
 		if (NULL == dev_ctx)
 			return (ENOMEM);
-		dev_ctx->dev_index = (int)i;
+		dev_ctx->dev_index = (uint32_t)i;
 		dev.priv = dev_ctx;
 		error = gmp_dev_list_add(plugin, dev_list, &dev);
 		if (0 != error) {
@@ -346,27 +441,40 @@ oss_dev_destroy(gmp_dev_p dev) {
 }
 
 
-#ifdef HAS_FEATURE_DEFAULT_DEV
+#ifdef HAVE_FEATURE_DEFAULT_DEV
 static int
 oss_dev_is_default(gmp_dev_p dev) {
+	int ret = 0;
+	oss_ctx_p oss_ctx;
 	oss_dev_ctx_p dev_ctx;
 
-	if (NULL == dev)
-		return (0);
-
+	if (NULL == dev ||
+	    NULL == dev->priv ||
+	    NULL == dev->plugin ||
+	    NULL == dev->plugin->priv)
+		return (DEV_IS_UNSED);
+	oss_ctx = dev->plugin->priv;
 	dev_ctx = dev->priv;
-	return (oss_default_dev_get() == dev_ctx->dev_index);
+
+	if (DEV_IDX_PLAY(oss_ctx->def_dev_index) == dev_ctx->dev_index) {
+		ret += DEV_IS_PLAY;
+	}
+	if (DEV_IDX_CAPTURE(oss_ctx->def_dev_index) == dev_ctx->dev_index) {
+		ret += DEV_IS_CAPTURE;
+	}
+
+	return (ret);
 }
 
 static int
-oss_dev_set_default(gmp_dev_p dev) {
+oss_dev_set_default(gmp_dev_p dev, const uint32_t type) {
 	oss_dev_ctx_p dev_ctx;
 
-	if (NULL == dev)
+	if (NULL == dev || NULL == dev->priv)
 		return (EINVAL);
 
 	dev_ctx = dev->priv;
-	return (oss_default_dev_set(dev_ctx->dev_index));
+	return (oss_default_dev_set(dev->plugin, dev_ctx->dev_index, type));
 }
 #endif
 
@@ -487,9 +595,10 @@ err_out:
 const gmp_descr_t plugin_oss3 = {
 	.name		= "OSS",
 	.description	= "OSSv3 Mixer driver plugin",
-#ifdef HAS_FEATURE_DEFAULT_DEV
+#ifdef HAVE_FEATURE_DEFAULT_DEV
 	.can_set_default_device = 1,
 	.is_def_dev_changed = oss_is_def_dev_changed,
+	.is_def_dev_separate = oss_is_def_dev_separate,
 	.dev_is_default	= oss_dev_is_default,
 	.dev_set_default= oss_dev_set_default,
 #endif

@@ -4,7 +4,7 @@
 [![Build-Ubuntu-latest Actions Status](https://github.com/rozhuk-im/gtk-mixer/workflows/build-ubuntu-latest/badge.svg)](https://github.com/rozhuk-im/gtk-mixer/actions)
 
 
-Rozhuk Ivan <rozhuk.im@gmail.com> 2020-2024
+Rozhuk Ivan <rozhuk.im@gmail.com> 2020-2026
 
 GTK-Mixer is GTK based volume control tool ("mixer").\
 GUI from xfce4-mixer: https://gitlab.xfce.org/apps/xfce4-mixer
@@ -30,6 +30,12 @@ Support the author
 * enable/disable lines (mute/unmute)
 * detect sound cards connect/disconnect
 * detect default sound card change
+* virtual_oss support
+
+
+## virtual_oss
+Default control device name is: ```/dev/vdsp.ctl```.\
+To change it set env var:```OSS_VOSS_CTL_PATH``` with new value.
 
 
 ## Compilation
@@ -37,21 +43,21 @@ Support the author
 ### Linux
 ```
 sudo apt-get install build-essential git cmake libgtk-3-dev libasound2-dev fakeroot
-git clone https://github.com/rozhuk-im/gtk-mixer.git
+git clone --recursive https://github.com/rozhuk-im/gtk-mixer.git
 cd gtk-mixer
 mkdir build
 cd build
-cmake ..
-make -j 4
+cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_VERBOSE_MAKEFILE=true ..
+make -j 8
 ```
 
 ### FreeBSD/DragonFlyBSD
 ```
-sudo pkg install git cmake x11-toolkits/gtk30
-git clone https://github.com/rozhuk-im/gtk-mixer.git
+sudo pkg install devel/git devel/cmake-core x11-toolkits/gtk30
+git clone --recursive https://github.com/rozhuk-im/gtk-mixer.git
 cd gtk-mixer
 mkdir build
 cd build
-cmake ..
-make -j 4
+cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_VERBOSE_MAKEFILE=true ..
+make -j 8
 ```

@@ -1,6 +1,6 @@
 /*-
  * Copyright (c) 2008 Jannis Pohlmann <jannis@xfce.org>
- * Copyright (c) 2020 - 2021 Rozhuk Ivan <rozhuk.im@gmail.com>
+ * Copyright (c) 2020-2025 Rozhuk Ivan <rozhuk.im@gmail.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -129,6 +129,7 @@ gtk_mixer_devs_combo_cur_set(GtkWidget *combo,
 
 static inline void
 gtk_mixer_devs_combo_dev_descr(gmp_dev_p dev, char *buf, size_t buf_size) {
+	char *type_descr;
 
 	if (NULL == buf || 0 == buf_size)
 		return;
@@ -136,12 +137,28 @@ gtk_mixer_devs_combo_dev_descr(gmp_dev_p dev, char *buf, size_t buf_size) {
 		buf[0] = 0x00;
 		return;
 	}
+
+	switch (gmp_dev_is_default(dev)) {
+	case DEV_IS_PLAY:
+		type_descr = " [play]";
+		break;
+	case DEV_IS_CAPTURE:
+		type_descr = " [cap]";
+		break;
+	case DEV_IS_ALL:
+		type_descr = " [play + cap]";
+		break;
+	default:
+		type_descr = "";
+		break;
+	}
+
 	snprintf(buf, buf_size,
 	    "%s: %s (%s)%s",
 	    dev->plugin->descr->name,
 	    dev->description,
 	    dev->name,
-	    ((gmp_dev_is_default(dev)) ? " [default]" : ""));
+	    type_descr);
 }
 
 void

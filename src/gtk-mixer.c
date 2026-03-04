@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2020-2024 Rozhuk Ivan <rozhuk.im@gmail.com>
+ * Copyright (c) 2020-2025 Rozhuk Ivan <rozhuk.im@gmail.com>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -90,7 +90,7 @@ gtk_mixer_check_update(gm_app_p app) {
 			app->dev_list = dev_list;
 			/* Select new current device. */
 			if (NULL == dev) {
-				dev = gmp_dev_list_get_default(&app->dev_list);
+				dev = gmp_dev_list_get_playback_default(&app->dev_list);
 			}
 			gtk_mixer_window_dev_cur_set(app->window, dev);
 		}
@@ -162,7 +162,7 @@ on_tray_icon_menu_about_click(GtkMenuItem *menuitem __unused,
 	GtkAboutDialog *dlg = GTK_ABOUT_DIALOG(gtk_about_dialog_new());
 	const char *authors[] = {
 		"",
-		"2020-2024 Rozhuk Ivan",
+		"2020-2025 Rozhuk Ivan",
 		"",
 		"Original xfce4-mixer",
 		"2012 Guido Berhoerster",
@@ -174,7 +174,7 @@ on_tray_icon_menu_about_click(GtkMenuItem *menuitem __unused,
 	gtk_about_dialog_set_program_name(dlg, "GTK-Mixer");
 	gtk_about_dialog_set_version(dlg, VERSION);
 	gtk_about_dialog_set_copyright(dlg,
-	    "Copyright (c) 2020-2024 Rozhuk Ivan <rozhuk.im@gmail.com>");
+	    "Copyright (c) 2020-2025 Rozhuk Ivan <rozhuk.im@gmail.com>");
 	gtk_about_dialog_set_comments(dlg, PACKAGE_DESCRIPTION);
 	gtk_about_dialog_set_license_type(dlg, GTK_LICENSE_GPL_2_0);
 	gtk_about_dialog_set_website(dlg, PACKAGE_URL);
@@ -271,7 +271,7 @@ main(int argc, char **argv) {
 	g_free(card_name);
 #endif
 	if (NULL == dev) {
-		dev = gmp_dev_list_get_default(&app.dev_list);
+		dev = gmp_dev_list_get_playback_default(&app.dev_list);
 	}
 	gtk_mixer_window_dev_cur_set(app.window, dev);
 

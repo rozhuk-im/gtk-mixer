@@ -34,7 +34,7 @@
   </VirtualDirectory>
   <Settings Type="Executable">
     <GlobalSettings>
-      <Compiler Options="" C_Options="`pkg-config --cflags gtk+-3.0`;-DHAVE_OSS;-DHAVE_REALLOCARRAY" Assembler=""/>
+      <Compiler Options="" C_Options="`pkg-config --cflags gtk+-3.0`;-DHAVE_OSS;-DHAVE_VIRTUAL_OSS;-DHAVE_REALLOCARRAY" Assembler=""/>
       <Linker Options="`pkg-config --cflags --libs gtk+-3.0`">
         <Library Value="asound"/>
       </Linker>
@@ -56,7 +56,7 @@
       </Debugger>
       <PreBuild/>
       <PostBuild/>
-      <CustomBuild Enabled="yes">
+      <CustomBuild Enabled="no">
         <Target Name="Configure">mkdir $(ProjectPath)/$(ConfigurationName) &amp;&amp;
 cd $(ProjectPath)/$(ConfigurationName) &amp;&amp;
 cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_VERBOSE_MAKEFILE=true -DENABLE_ALSA=true ..
