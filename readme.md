@@ -8,8 +8,10 @@ Rozhuk Ivan <rozhuk.im@gmail.com> 2020-2026
 
 GTK-Mixer is GTK based volume control tool ("mixer").\
 GUI from xfce4-mixer: https://gitlab.xfce.org/apps/xfce4-mixer
-but xfce4 and gstreamer does not used.
-
+but xfce4 and gstreamer does not used.\
+\
+\
+![Screenshot](gtk-mixer.png)
 
 ## Licence
 GPL2 licence.
@@ -30,6 +32,7 @@ Support the author
 * enable/disable lines (mute/unmute)
 * detect sound cards connect/disconnect
 * detect default sound card change
+* tray icon react on mouse wheel actions
 * virtual_oss support
 
 
