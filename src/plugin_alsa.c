@@ -222,7 +222,7 @@ alsa_dev_init(gmp_dev_p dev) {
 		    &dev_line);
 		if (0 != error)
 			goto err_out;
-		dev_line->priv = (void*)snd_mixer_selem_get_index(elem); /* Store line index. */
+		dev_line->priv = (void*)(size_t)snd_mixer_selem_get_index(elem); /* Store line index. */
 		for (int i = 0; i < (int)nitems(alsa_ch_map); i ++) {
 			if (0 == snd_mixer_selem_has_playback_channel(elem, i) &&
 			    0 == snd_mixer_selem_has_capture_channel(elem, i))
