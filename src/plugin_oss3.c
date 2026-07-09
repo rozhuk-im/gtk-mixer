@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2020-2025 Rozhuk Ivan <rozhuk.im@gmail.com>
+ * Copyright (c) 2020-2026 Rozhuk Ivan <rozhuk.im@gmail.com>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -51,6 +51,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
+#include <dirent.h>
 
 #include "plugin_api.h"
 
@@ -59,7 +60,6 @@
 #define	DEV_IDX_CAPTURE(_idx)	(0xffff & ((_idx) >> 16))
 
 #define PATH_DEV_MIXER		"/dev/mixer"
-#define MIXER_ALLOC_CNT		8
 #define VOSS_CTL_PATH_ENVVAR	"OSS_VOSS_CTL_PATH"
 #define VOSS_CTL_PATH_DEF	"/dev/vdsp.ctl"
 
@@ -90,6 +90,7 @@ typedef struct oss_device_context_s {
 
 /* Mixer device state: to track device change: connect/disconnect. */
 typedef struct oss_mixer_device_state_s {
+	uint32_t	dev_index;
 	dev_t		st_dev; /* inode's device */
 	ino_t		st_ino; /* inode's number */
 	struct timespec	st_mtim; /* time of last data modification */
@@ -288,11 +289,29 @@ device_descr_get(size_t dev_idx, char *buf, size_t buf_size) {
 #endif
 	buf[tmp] = 0x00;
 }
+
+static int
+scandir_filter_cb(const struct dirent *de) {
+
+	if (NULL == de || 0 == de->d_fileno)
+		return (0);
+	/* Only few types allowed. */
+	switch (de->d_type) {
+	case DT_CHR:
+	case DT_LNK:
+		break;
+	default: /* Filter out all other. */
+		return (0);
+	}
+	/* Allow only "mixer*". */
+	return (5 < de->d_namlen && 0 == memcmp("mixer", de->d_name, 5));
+}
+
 static int
 oss_list_devs(gm_plugin_p plugin, gmp_dev_list_p dev_list) {
-	int error;
-	size_t i, fail_cnt;
-	struct stat st;
+	int error, rc;
+	struct dirent **dirp = NULL;
+	uint32_t dev_index;
 	char dev_path[32], dev_descr[256];
 	gmp_dev_t dev = { .name = dev_path, .description = dev_descr };
 	oss_dev_ctx_p dev_ctx;
@@ -301,74 +320,83 @@ oss_list_devs(gm_plugin_p plugin, gmp_dev_list_p dev_list) {
 		return (EINVAL);
 
 	/* Auto detect. */
-	for (i = 0, fail_cnt = 0; fail_cnt < MIXER_ALLOC_CNT; i ++, fail_cnt ++) {
-		snprintf(dev_path, sizeof(dev_path),
-		    PATH_DEV_MIXER"%zu", i);
-		if (0 != stat(dev_path, &st))
-			continue;
-		device_descr_get(i, dev_descr, sizeof(dev_descr));
+	rc = scandir("/dev", &dirp, scandir_filter_cb, versionsort);
+	if (-1 == rc || NULL == dirp)
+		return (errno);
+	for (size_t i = 0; i < (size_t)rc; i ++) {
+		dev_index = (uint32_t)atoi((dirp[i]->d_name + 5));
+		free(dirp[i]);
 		dev_ctx = calloc(1, sizeof(oss_dev_ctx_t));
 		if (NULL == dev_ctx)
-			return (ENOMEM);
-		dev_ctx->dev_index = (uint32_t)i;
+			continue;
+		dev_ctx->dev_index = dev_index;
 		dev.priv = dev_ctx;
+		snprintf(dev_path, sizeof(dev_path), PATH_DEV_MIXER"%i", dev_ctx->dev_index);
+		device_descr_get((size_t)dev_ctx->dev_index, dev_descr, sizeof(dev_descr));
 		error = gmp_dev_list_add(plugin, dev_list, &dev);
 		if (0 != error) {
-			free(dev.priv);
-			return (error);
+			free(dev_ctx);
 		}
-		fail_cnt = 0; /* Reset fail counter. */
 	}
+	free(dirp);
 
 	return (0);
 }
 
 static int
 oss_is_list_devs_changed(gm_plugin_p plugin) {
-	int ret = 0;
-	size_t i, fail_cnt;
+	int ret = 0, rc;
+	struct dirent **dirp = NULL;
+	uint32_t dev_index;
 	struct stat st;
 	char dev_path[32];
 	oss_ctx_p oss_ctx;
-	oss_dev_state_p dstate, dev_state_new;
+	oss_dev_state_p dstate;
 
 	if (NULL == plugin || NULL == plugin->priv)
 		return (0);
 
 	oss_ctx = plugin->priv;
+	rc = scandir("/dev", &dirp, scandir_filter_cb, versionsort);
+	if (-1 == rc || NULL == dirp)
+		return (0);
+	if (oss_ctx->dev_state_count != (size_t)rc) {
+		free(oss_ctx->dev_state);
+		oss_ctx->dev_state = calloc((size_t)rc, sizeof(oss_dev_state_t));
+		if (NULL == oss_ctx->dev_state) {
+			for (size_t i = 0; i < (size_t)rc; i ++) {
+				free(dirp[i]);
+			}
+			free(dirp);
+			oss_ctx->dev_state_count = 0;
+			return (0);
+		}
+		oss_ctx->dev_state_count = (size_t)rc;
+		ret ++;
+	}
 	/* Calculate count and latest mod time. */
-	for (i = 0, fail_cnt = 0; fail_cnt < MIXER_ALLOC_CNT; i ++, fail_cnt ++) {
-		if (oss_ctx->dev_state_count <= i) {
-			dev_state_new = reallocarray(oss_ctx->dev_state,
-			    (oss_ctx->dev_state_count + MIXER_ALLOC_CNT),
-			    sizeof(oss_dev_state_t));
-			if (NULL == dev_state_new)
-				return (1); /* Assume that devices has changes. */
-			/* Zeroize new mem. */
-			memset(&dev_state_new[oss_ctx->dev_state_count],
-			    0x00,
-			    (MIXER_ALLOC_CNT * sizeof(oss_dev_state_t)));
-			oss_ctx->dev_state = dev_state_new;
-			oss_ctx->dev_state_count += MIXER_ALLOC_CNT;
-		}
+	for (size_t i = 0; i < (size_t)rc; i ++) {
 		dstate = &oss_ctx->dev_state[i];
-		snprintf(dev_path, sizeof(dev_path),
-		    PATH_DEV_MIXER"%zu", i);
+		dev_index = (uint32_t)atoi((dirp[i]->d_name + 5));
+		free(dirp[i]);
+
+		snprintf(dev_path, sizeof(dev_path), PATH_DEV_MIXER"%i", dev_index);
 		memset(&st, 0x00, sizeof(st));
-		if (0 == stat(dev_path, &st)) {
-			fail_cnt = 0; /* Reset fail counter. */
-		}
-		if (dstate->st_dev == st.st_dev &&
+		stat(dev_path, &st); /* Ignore fail. */
+		if (dstate->dev_index == dev_index &&
+		    dstate->st_dev == st.st_dev &&
 		    dstate->st_ino == st.st_ino &&
 		    dstate->st_mtim.tv_nsec == st.st_mtim.tv_nsec &&
 		    dstate->st_mtim.tv_sec == st.st_mtim.tv_sec)
 			continue; /* Not changed. */
 		/* Update. */
+		dstate->dev_index = dev_index;
 		dstate->st_dev = st.st_dev;
 		dstate->st_ino = st.st_ino;
 		dstate->st_mtim = st.st_mtim;
 		ret ++;
 	}
+	free(dirp);
 
 	return (ret);
 }
@@ -605,7 +633,7 @@ const gmp_descr_t plugin_oss3 = {
 	.init		= oss_init,
 	.uninit		= oss_uninit,
 	.list_devs	= oss_list_devs,
-	.is_list_devs_changed= oss_is_list_devs_changed,
+	.is_list_devs_changed = oss_is_list_devs_changed,
 	.dev_init	= oss_dev_init,
 	.dev_destroy	= oss_dev_destroy,
 	.dev_line_read	= oss_dev_line_read,
