@@ -246,7 +246,7 @@ oss_is_def_dev_changed(gm_plugin_p plugin) {
 }
 
 static int
-oss_is_def_dev_separate(gm_plugin_p plugin) {
+oss_is_def_dev_separate(gm_plugin_p plugin __unused) {
 #ifdef HAVE_VIRTUAL_OSS
 	int basename_clone = 1;
 	size_t sz = sizeof(int);
@@ -331,7 +331,7 @@ oss_list_devs(gm_plugin_p plugin, gmp_dev_list_p dev_list) {
 			continue;
 		dev_ctx->dev_index = dev_index;
 		dev.priv = dev_ctx;
-		snprintf(dev_path, sizeof(dev_path), PATH_DEV_MIXER"%i", dev_ctx->dev_index);
+		snprintf(dev_path, sizeof(dev_path), PATH_DEV_MIXER"%u", dev_ctx->dev_index);
 		device_descr_get((size_t)dev_ctx->dev_index, dev_descr, sizeof(dev_descr));
 		error = gmp_dev_list_add(plugin, dev_list, &dev);
 		if (0 != error) {
@@ -380,7 +380,7 @@ oss_is_list_devs_changed(gm_plugin_p plugin) {
 		dev_index = (uint32_t)atoi((dirp[i]->d_name + 5));
 		free(dirp[i]);
 
-		snprintf(dev_path, sizeof(dev_path), PATH_DEV_MIXER"%i", dev_index);
+		snprintf(dev_path, sizeof(dev_path), PATH_DEV_MIXER"%u", dev_index);
 		memset(&st, 0x00, sizeof(st));
 		stat(dev_path, &st); /* Ignore fail. */
 		if (dstate->dev_index == dev_index &&
