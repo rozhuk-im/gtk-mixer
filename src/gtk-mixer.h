@@ -44,7 +44,7 @@
 #	include "config.h"
 #else
 #	define PACKAGE_NAME		"gtk-mixer"
-#	define VERSION			"1.0.0"
+#	define PACKAGE_VERSION		"1.0.0"
 #	define PACKAGE_DESCRIPTION	""
 #	define PACKAGE_URL		""
 #endif

@@ -1,3 +1,6 @@
 [submodule "3rdparty/virtual_oss"]
 	path = 3rdparty/virtual_oss
 	url = https://github.com/freebsd/virtual_oss.git
+[submodule "3rdparty/ssbs"]
+	path = 3rdparty/ssbs
+	url = https://github.com/rozhuk-im/ssbs.git

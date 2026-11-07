@@ -45,22 +45,14 @@ To change it set env var:```OSS_VOSS_CTL_PATH``` with new value.
 
 ### Linux
 ```
-sudo apt-get install build-essential git cmake libgtk-3-dev libasound2-dev fakeroot
+sudo apt-get install build-essential git libgtk-3-dev libasound2-dev fakeroot
 git clone --recursive https://github.com/rozhuk-im/gtk-mixer.git
-cd gtk-mixer
-mkdir build
-cd build
-cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_VERBOSE_MAKEFILE=true ..
-make -j 8
+./gtk-mixer/make.sh
 ```
 
 ### FreeBSD/DragonFlyBSD
 ```
-sudo pkg install devel/git devel/cmake-core x11-toolkits/gtk30
+sudo pkg install devel/git x11-toolkits/gtk30
 git clone --recursive https://github.com/rozhuk-im/gtk-mixer.git
-cd gtk-mixer
-mkdir build
-cd build
-cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_VERBOSE_MAKEFILE=true ..
-make -j 8
+./gtk-mixer/make.sh
 ```
